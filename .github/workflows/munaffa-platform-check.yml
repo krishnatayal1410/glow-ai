@@ -27,35 +27,44 @@ jobs:
         run: |
           npm run preview -- --port 4173 >/tmp/munaffa-web.log 2>&1 &
           sleep 3
-      - name: Verify marketing, 3D and operating roles
+      - name: Verify cinematic site and operating roles
         run: |
           cat > verify.mjs <<'EOF'
           import { chromium } from 'playwright';
           const browser=await chromium.launch({headless:true});
           const context=await browser.newContext({viewport:{width:1440,height:900},reducedMotion:'reduce'});
           const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
-          await page.goto('http://127.0.0.1:4173/#home',{waitUntil:'domcontentloaded'});
-          await page.waitForSelector('canvas');await page.waitForTimeout(1200);
+          await page.goto('http://127.0.0.1:4173/#home',{waitUntil:'domcontentloaded',timeout:30000});
+          await page.waitForSelector('canvas');await page.waitForTimeout(900);
           if(errors.length)throw new Error(errors.join('\n'));
-          if(!(await page.locator('h1').first().textContent()).includes('Munaffa'))throw new Error('home hero missing');
-          await page.locator('.menu-btn').click();
-          if(!(await page.locator('.menu-overlay').evaluate(el=>el.classList.contains('open'))))throw new Error('3D menu overlay failed');
-          await page.locator('.menu-overlay .close').click();
-          for(const route of ['product','profit','operations','inventory','guest','ai','pricing']){
-            await page.evaluate(r=>location.hash=r,route);await page.waitForTimeout(120);
-            if(!(await page.locator('.hero h1').isVisible()))throw new Error(route+' hero missing');
-            if(!(await page.locator('canvas').isVisible()))throw new Error(route+' canvas missing');
+          const hero=await page.locator('.hero-text h1').textContent();
+          if(!hero?.includes('Munaffa'))throw new Error('home hero missing');
+          const canvas=await page.locator('canvas').evaluate(el=>({w:el.width,h:el.height,cw:el.clientWidth,ch:el.clientHeight}));
+          if(!canvas.w||!canvas.h)throw new Error('3D canvas failed');
+          if(canvas.w/canvas.cw>1.3)throw new Error('desktop DPR too high');
+          await page.locator('.cin-menu').click();
+          if(!(await page.locator('.full-menu').evaluate(el=>el.classList.contains('open'))))throw new Error('3D navigation failed');
+          await page.locator('.full-menu button').nth(1).hover();
+          await page.locator('.full-close').click();
+          for(const route of ['platform','profit','operations','inventory','guest','ai','integrations','customers','resources','pricing','about','contact']){
+            await page.evaluate(r=>location.hash=r,route);await page.waitForTimeout(130);
+            if(!(await page.locator('.hero-text h1').isVisible()))throw new Error(route+' hero missing');
+            if(!(await page.locator('canvas').isVisible()))throw new Error(route+' 3D world missing');
+            if((await page.locator('.cin-chapter').count())!==6)throw new Error(route+' chapter count');
           }
-          for(const role of ['owner','manager','waiter','kitchen','stock','admin','guest']){
+          for(const role of ['owner','manager','cashier','waiter','kitchen','stock','admin','guest']){
             await page.evaluate(r=>location.hash='app/'+r,role);await page.waitForTimeout(100);
-            if(!(await page.locator('.ops').isVisible()))throw new Error(role+' workspace missing');
+            if(!(await page.locator('.operating-os').isVisible()))throw new Error(role+' workspace missing');
           }
+          await page.evaluate(()=>location.hash='app/cashier');await page.waitForTimeout(100);
+          await page.locator('.menu-grid-pos button').first().click();
+          if(!(await page.locator('.bill-total').textContent()).includes('349'))throw new Error('POS cart failed');
           await page.evaluate(()=>location.hash='app/kitchen');await page.waitForTimeout(100);
-          await page.locator('.kds-card').first().click();
+          await page.locator('.kot').first().click();
           await page.evaluate(()=>location.hash='app/guest');await page.waitForTimeout(100);
-          await page.locator('.dish button').first().click();
-          if(!(await page.locator('.cart-panel').textContent()).includes('1 items'))throw new Error('guest cart failed');
-          await context.close();await browser.close();console.log('Munaffa web platform passed');
+          await page.locator('.guest-phone article button').first().click();
+          if(!(await page.locator('.op-panel').last().textContent()).includes('1 items'))throw new Error('guest cart failed');
+          await context.close();await browser.close();console.log('Munaffa cinematic platform passed');
           EOF
           node verify.mjs
   verify-mobile:
@@ -79,6 +88,7 @@ jobs:
           test -f app.json
           test -f eas.json
           grep -q 'Munaffa' App.jsx
+          grep -q 'Supabase' App.jsx
   verify-database:
     runs-on: ubuntu-latest
     steps:
@@ -90,3 +100,4 @@ jobs:
           grep -q 'enable row level security' munaffa-platform/supabase/schema.sql
           grep -q 'inventory_movements' munaffa-platform/supabase/schema.sql
           grep -q 'audit_events' munaffa-platform/supabase/schema.sql
+          grep -q 'restaurant_tables' munaffa-platform/supabase/schema.sql
