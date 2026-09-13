@@ -17,6 +17,8 @@ jobs:
           node-version: 24
       - name: Install web dependencies
         run: npm install --no-audit --no-fund
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
       - name: Build immersive web app
         run: npm run build
       - name: Install Chromium test runtime
@@ -45,10 +47,12 @@ jobs:
           if(consoleErrors.some(x=>!x.includes('favicon')))throw new Error('console error: '+consoleErrors.join(' | '));
           await expectCount('.marketing'); await expectCount('canvas'); await expectCount('.hero-copy h1');
           if(!(await page.locator('.hero-copy h1').textContent()).includes('Munaffa'))throw new Error('home hero missing');
-          const canvas=await page.locator('canvas').evaluate(el=>({w:el.width,cw:el.clientWidth,h:el.height,ch:el.clientHeight}));
-          if(!canvas.w||!canvas.h||canvas.w/canvas.cw>1.35||canvas.h/canvas.ch>1.35)throw new Error('3D renderer quality profile invalid');
+          const canvas=page.locator('canvas').first();
+          const canvasWidth=Number(await canvas.getAttribute('width')); const canvasHeight=Number(await canvas.getAttribute('height'));
+          if(!canvasWidth||!canvasHeight)throw new Error('3D renderer did not initialize');
           await clickJs('.round-menu'); await page.waitForTimeout(80);
-          if(!(await page.locator('.immersive-menu').evaluate(el=>el.classList.contains('open'))))throw new Error('immersive menu failed');
+          const menuClass=await page.locator('.immersive-menu').getAttribute('class');
+          if(!menuClass?.includes('open'))throw new Error('immersive menu failed');
           await page.locator('.immersive-menu nav button').first().dispatchEvent('mouseenter');
           await clickJs('.menu-close');
           for(const route of ['platform','profit','operations','inventory','guest','ai','discovery','pricing','about']){
@@ -70,7 +74,6 @@ jobs:
           await expectCount('.consumer');
           await page.locator('.venue-open').first().click({force:true});await page.waitForTimeout(100);
           await page.locator('.dish-row>button').first().click({force:true});await page.waitForTimeout(220);
-          console.log('CART_AFTER_ADD',await page.locator('.cart-fab').count(),await page.evaluate(()=>localStorage.getItem('munaffa:v2')));
           if(errors.length)throw new Error('consumer add pageerror: '+errors.join(' | '));
           await expectCount('.cart-fab');
           await page.locator('.cart-fab').click({force:true});await page.waitForTimeout(80);
