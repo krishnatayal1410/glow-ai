@@ -1,7 +1,7 @@
 {
   "name": "@munaffa/web",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
@@ -11,12 +11,16 @@
   "dependencies": {
     "@react-three/drei": "latest",
     "@react-three/fiber": "latest",
+    "@react-three/postprocessing": "latest",
     "@supabase/supabase-js": "latest",
     "gsap": "latest",
     "lenis": "latest",
     "lucide-react": "latest",
+    "postprocessing": "latest",
+    "qrcode.react": "latest",
     "react": "19.2.0",
     "react-dom": "19.2.0",
+    "recharts": "latest",
     "three": "latest"
   },
   "devDependencies": {

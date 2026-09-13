@@ -2,13 +2,24 @@
   "expo": {
     "name": "Munaffa",
     "slug": "munaffa",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "ios": {"supportsTablet": true, "bundleIdentifier": "com.munaffa.app"},
-    "android": {"package": "com.munaffa.app", "adaptiveIcon": {"backgroundColor": "#07130d"}},
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.munaffa.app",
+      "infoPlist": {"NSLocationWhenInUseUsageDescription": "Munaffa uses your location to show nearby restaurants, cafés and hotel dining."}
+    },
+    "android": {
+      "package": "com.munaffa.app",
+      "adaptiveIcon": {"backgroundColor": "#07130d"}
+    },
     "scheme": "munaffa",
-    "plugins": ["expo-sqlite"],
+    "plugins": [
+      "expo-sqlite",
+      ["expo-location", {"locationWhenInUsePermission": "Allow Munaffa to show nearby restaurants, cafés and hotel dining."}],
+      ["expo-camera", {"cameraPermission": "Allow Munaffa to scan restaurant and table QR codes.", "recordAudioAndroid": false}]
+    ],
     "extra": {"eas": {"projectId": "REPLACE_WITH_EAS_PROJECT_ID"}}
   }
 }
