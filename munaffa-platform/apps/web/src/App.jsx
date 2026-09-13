@@ -16,7 +16,8 @@ export default function App(){
  useEffect(()=>{const f=()=>setRoute(readRoute());addEventListener('hashchange',f);return()=>removeEventListener('hashchange',f)},[]);
  useEffect(()=>{(async()=>{const s=await getInitialSession();setSession(s);setProfile(await getSavedProfile());setReady(true)})()},[]);
  useEffect(()=>{const on=()=>setOnline(true),off=()=>setOnline(false);addEventListener('online',on);addEventListener('offline',off);return()=>{removeEventListener('online',on);removeEventListener('offline',off)}},[]);
- useEffect(()=>saveLocal({cart}),[cart]);useEffect(()=>saveLocal({order}),[order]);
+ useEffect(()=>{saveLocal({cart})},[cart]);
+ useEffect(()=>{saveLocal({order})},[order]);
  const value=useMemo(()=>({route,session,setSession,profile,setProfile,cart,setCart,activeVenue,setActiveVenue,order,setOrder,online,logout:async()=>{await signOutUser();setSession(null);setProfile(null);setCart([]);setOrder(null);go('home')}}),[route,session,profile,cart,activeVenue,order,online]);
  if(!ready)return <div className="boot"><div className="boot-orbit"/><strong>Munaffa</strong><span>Connecting the restaurant...</span></div>;
  let view;if(route==='auth'||route==='signup'||route==='onboarding')view=<AuthOnboarding/>;else if(route.startsWith('consumer'))view=<ConsumerExperience/>;else if(route.startsWith('app/'))view=<RestaurantOS key={route}/>;else view=<ImmersiveMarketing key={route}/>;
