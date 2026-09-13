@@ -41,4 +41,5 @@ export const plans=[
  {name:'Scale',price:null,for:'Groups & chains',features:['Multi-outlet control','Central kitchen','Custom integrations','SLA & onboarding','Data warehouse exports']}
 ];
 
+export function money(v){return new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:0}).format(v)}
 export function distanceKm(a,b){if(!a||!b)return null;const R=6371,dLat=(b.lat-a.lat)*Math.PI/180,dLng=(b.lng-a.lng)*Math.PI/180;const q=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)**2;return 2*R*Math.asin(Math.sqrt(q));}
