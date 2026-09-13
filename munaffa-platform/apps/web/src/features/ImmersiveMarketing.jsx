@@ -1,13 +1,14 @@
 import React,{useEffect,useMemo,useRef,useState}from'react';
 import{Canvas,useFrame,useThree}from'@react-three/fiber';
-import{Environment,Float,Html,MeshReflectorMaterial}from'@react-three/drei';
+import{Environment,Float,MeshReflectorMaterial}from'@react-three/drei';
 import{Bloom,EffectComposer,Noise,Vignette}from'@react-three/postprocessing';
 import*as THREE from'three';
 import gsap from'gsap';
 import{ScrollTrigger}from'gsap/ScrollTrigger';
 import Lenis from'lenis';
-import{ArrowRight,ChevronDown,Compass,Menu,MousePointer2,Play,QrCode,Sparkles,X}from'lucide-react';
+import{ArrowRight,ChevronDown,Compass,Menu,MousePointer2,QrCode,X}from'lucide-react';
 import{go}from'../App';
+
 gsap.registerPlugin(ScrollTrigger);
 
 const pages={
@@ -22,21 +23,213 @@ const pages={
  pricing:{eyebrow:'PRICING',title:'Software should earn its place.',body:'Start with a pilot, measure operational improvement, then expand.',accent:'#b9ef83'},
  about:{eyebrow:'WHY MUNAFFA',title:'Better margins without worse hospitality.',body:'We are building a profit-first restaurant platform for the messy reality of real kitchens, real guests and real operators.',accent:'#e5c69a'}
 };
+
 const chapters=[
- ['01','DISCOVER','A guest searches nearby restaurants, cafés or hotel dining.'],['02','THE TABLE','A reservation, waiter order or optional QR becomes one table session.'],['03','THE KITCHEN','Orders split into station work and preparation timing.'],['04','THE INGREDIENTS','Every dish maps back to recipe and theoretical consumption.'],['05','THE STOCK','Counts, waste, purchasing and supplier changes reveal reality.'],['06','THE LEAK','Variance separates from the healthy money flow.'],['07','THE OWNER','The restaurant resolves into decisions, not dashboard clutter.'],['08','THE LOOP','Guests return, demand improves, the restaurant learns.']
+ ['01','DISCOVER','A guest searches nearby restaurants, cafés or hotel dining.'],
+ ['02','THE TABLE','A reservation, waiter order or optional QR becomes one table session.'],
+ ['03','THE KITCHEN','Orders split into station work and preparation timing.'],
+ ['04','THE INGREDIENTS','Every dish maps back to recipe and theoretical consumption.'],
+ ['05','THE STOCK','Counts, waste, purchasing and supplier changes reveal reality.'],
+ ['06','THE LEAK','Variance separates from the healthy money flow.'],
+ ['07','THE OWNER','The restaurant resolves into decisions, not dashboard clutter.'],
+ ['08','THE LOOP','Guests return, demand improves, the restaurant learns.']
 ];
-const cameraPath=[[0,4.6,12],[4.8,2.3,7],[-4.5,2.2,6],[2.7,2.1,5],[-2.8,2.8,5.8],[0,1.8,4.2],[0,3.2,8],[0,6.5,12]];
-const lerp=(a,b,t)=>a+(b-a)*t;const clamp=v=>Math.max(0,Math.min(1,v));
-function useScrollProgress(){const[p,setP]=useState(0);useEffect(()=>{const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;let lenis,id;if(!reduce&&innerWidth>900){lenis=new Lenis({duration:1.08,wheelMultiplier:.82,smoothWheel:true});const loop=t=>{lenis.raf(t);id=requestAnimationFrame(loop)};id=requestAnimationFrame(loop)}return()=>{if(id)cancelAnimationFrame(id);lenis?.destroy()}},[]);useEffect(()=>{let id=0;const read=()=>{if(id)return;id=requestAnimationFrame(()=>{const m=document.documentElement.scrollHeight-innerHeight;setP(m?scrollY/m:0);id=0})};addEventListener('scroll',read,{passive:true});read();return()=>removeEventListener('scroll',read)},[]);return p}
-function useTextMotion(key){useEffect(()=>{const ctx=gsap.context(()=>{document.querySelectorAll('.reveal-line').forEach(el=>gsap.fromTo(el,{y:90,opacity:0,rotateX:-12,filter:'blur(18px)'},{y:0,opacity:1,rotateX:0,filter:'blur(0px)',ease:'none',scrollTrigger:{trigger:el,start:'top 92%',end:'top 56%',scrub:true}}));document.querySelectorAll('.chapter-copy').forEach(el=>gsap.fromTo(el,{opacity:.15,x:80},{opacity:1,x:0,ease:'none',scrollTrigger:{trigger:el,start:'top 80%',end:'top 46%',scrub:true}}));document.querySelectorAll('.kinetic-word').forEach(el=>gsap.to(el,{xPercent:-22,ease:'none',scrollTrigger:{trigger:el.parentElement,start:'top bottom',end:'bottom top',scrub:true}}))});return()=>ctx.revert()},[key])}
-function Table(){return <group><mesh position={[0,.65,0]} castShadow><cylinderGeometry args={[1.55,1.35,.12,48]}/><meshStandardMaterial color="#4b2f21" roughness={.38}/></mesh><mesh position={[0,.18,0]}><cylinderGeometry args={[.24,.38,.85,32]}/><meshStandardMaterial color="#171c18" metalness={.5}/></mesh>{[0,Math.PI/2,Math.PI,Math.PI*1.5].map((a,i)=><group key={i} position={[Math.cos(a)*2,.35,Math.sin(a)*2]} rotation={[0,-a,0]}><mesh><boxGeometry args={[.72,.72,.72]}/><meshStandardMaterial color="#242820" roughness={.7}/></mesh></group>)}</group>}
-function Phone(){return <group><mesh castShadow><boxGeometry args={[1.25,2.55,.12]}/><meshStandardMaterial color="#050706" metalness={.82} roughness={.18}/></mesh><mesh position={[0,0,.065]}><planeGeometry args={[1.08,2.34]}/><meshBasicMaterial color="#f6f0e5"/></mesh>{[-.73,-.35,.05,.44,.82].map((y,i)=><mesh key={y} position={[0,y,.071]}><planeGeometry args={[.82,i===0?.28:.22]}/><meshBasicMaterial color={i===0?'#246744':['#ddb66f','#d86d54','#91b877','#d4c7a2'][i-1]}/></mesh>)}</group>}
-function Kitchen(){return <group><mesh castShadow position={[0,.55,0]}><boxGeometry args={[5,1.1,1.6]}/><meshStandardMaterial color="#a99779" metalness={.25} roughness={.35}/></mesh><mesh position={[0,1.45,-.4]}><boxGeometry args={[4.2,.75,.08]}/><meshStandardMaterial color="#14261b" emissive="#2c7b4d" emissiveIntensity={.5}/></mesh>{[-1.6,-.5,.6,1.7].map((x,i)=><mesh key={x} position={[x,2.05,0]}><boxGeometry args={[.7,.35,.55]}/><meshStandardMaterial color={['#e09f62','#f2d399','#82b477','#d97758'][i]}/></mesh>)}</group>}
-function Pantry(){return <group>{[0,1,2].map(y=><group key={y} position={[0,y,0]}>{[-1.5,-.5,.5,1.5].map((x,i)=><mesh key={x} position={[x,.35,0]} castShadow><boxGeometry args={[.7,.65,.8]}/><meshStandardMaterial color={['#efbd68','#e4d7b5','#8ebd77','#c96f50'][i]} roughness={.58}/></mesh>)}</group>)}</group>}
-function MoneyFlow({accent}){const points=useMemo(()=>{const a=new Float32Array(240*3);for(let i=0;i<240;i++){const t=i/240*10;a[i*3]=(t-5)+Math.sin(t*2)*.45;a[i*3+1]=1.7+Math.cos(t*1.7)*.65;a[i*3+2]=Math.sin(t)*1.2}return a},[]);return <points><bufferGeometry><bufferAttribute attach="attributes-position" args={[points,3]}/></bufferGeometry><pointsMaterial color={accent} size={.07} transparent opacity={.85} depthWrite={false}/></points>}
-function City(){return <group>{[[-3,0,-1],[0,0,-2],[3,0,-.8],[-2,0,2],[2.5,0,2.4]].map((p,i)=><group key={i} position={p}><mesh position={[0,.7,0]}><boxGeometry args={[1.5,1.4+(i%3)*.55,1.5]}/><meshStandardMaterial color={i===2?'#234b35':'#171e19'} roughness={.68}/></mesh><mesh position={[0,1.7+(i%3)*.28,0]}><sphereGeometry args={[.13,16,16]}/><meshBasicMaterial color={['#b9ef83','#ffb86d','#7bdcff','#ff9b7e','#aa96ff'][i]}/></mesh></group>)}</group>}
-function Dashboard(){return <group>{[-2.8,-1.4,0,1.4,2.8].map((x,i)=><mesh key={x} position={[x,(i%2)*.4,0]}><boxGeometry args={[1.15,1.3,.08]}/><meshStandardMaterial color={i===4?'#69231f':'#eaf0e8'} emissive={i===4?'#ff5c4d':'#183924'} emissiveIntensity={.22}/></mesh>)}<mesh position={[0,-1.4,0]}><boxGeometry args={[7.2,1.1,.08]}/><meshStandardMaterial color="#eaf0e8" emissive="#173323" emissiveIntensity={.15}/></mesh></group>}
-function World({progress,page,menuOpen,hover}){const root=useRef(),city=useRef(),table=useRef(),phone=useRef(),kitchen=useRef(),pantry=useRef(),ingredients=useRef(),money=useRef(),leaks=useRef(),dash=useRef();const{camera,pointer}=useThree();const accent=page.accent;useFrame((s,dt)=>{const p=clamp(progress),f=p*7,i=Math.min(6,Math.floor(f)),t=f-i;const a=cameraPath[i],b=cameraPath[i+1]||a;const target=new THREE.Vector3(lerp(a[0],b[0],t),lerp(a[1],b[1],t),lerp(a[2],b[2],t));if(menuOpen)target.set(0,10.5,10.5);camera.position.lerp(target,1-Math.pow(.002,dt));camera.lookAt(menuOpen?0:0,menuOpen?0:1,0);root.current.rotation.y=THREE.MathUtils.lerp(root.current.rotation.y,pointer.x*.08+(p-.5)*.12,dt*3);root.current.rotation.x=THREE.MathUtils.lerp(root.current.rotation.x,-pointer.y*.025,dt*3);const stage=Math.round(p*7);city.current.position.y=THREE.MathUtils.lerp(city.current.position.y,stage===0?0:-4,dt*3);city.current.scale.setScalar(THREE.MathUtils.lerp(city.current.scale.x,stage===0?1.15:.5,dt*3));table.current.position.x=THREE.MathUtils.lerp(table.current.position.x,stage===1?-1.5:-6,dt*3);phone.current.position.x=THREE.MathUtils.lerp(phone.current.position.x,stage===1||stage===2?2.1:6,dt*3);phone.current.rotation.y+=dt*.18;kitchen.current.position.z=THREE.MathUtils.lerp(kitchen.current.position.z,stage===2?0:-7,dt*3);pantry.current.position.y=THREE.MathUtils.lerp(pantry.current.position.y,stage===4?0:-5,dt*3);ingredients.current.rotation.y+=dt*(.35+p);ingredients.current.scale.setScalar(THREE.MathUtils.lerp(ingredients.current.scale.x,stage===3?1.25:.4,dt*3));money.current.position.y=THREE.MathUtils.lerp(money.current.position.y,stage===5?0:-5,dt*3);leaks.current.position.y=1.8+Math.sin(s.clock.elapsedTime*1.5)*.18;leaks.current.scale.setScalar(stage===5?1:.01);dash.current.position.z=THREE.MathUtils.lerp(dash.current.position.z,stage>=6?0:-9,dt*3)});return <group ref={root}><mesh rotation={[-Math.PI/2,0,0]} position={[0,-.02,0]}><planeGeometry args={[35,35]}/><MeshReflectorMaterial blur={[250,90]} resolution={512} mixBlur={1} mixStrength={12} roughness={.78} depthScale={.3} color="#07100b" metalness={.05}/></mesh><group ref={city} position={[0,0,0]}><City/></group><group ref={table} position={[-6,0,.5]}><Table/></group><Float speed={1.3} floatIntensity={.2} rotationIntensity={.08}><group ref={phone} position={[6,2,1]}><Phone/></group></Float><group ref={kitchen} position={[0,0,-7]}><Kitchen/></group><group ref={pantry} position={[2.8,-5,1]}><Pantry/></group><group ref={ingredients} position={[-1,2,-1]}>{Array.from({length:30},(_,i)=>{const a=i/30*Math.PI*2,r=1.2+(i%4)*.25;return <mesh key={i} position={[Math.cos(a)*r,Math.sin(a*3)*.65,Math.sin(a)*r]}><sphereGeometry args={[.08+(i%3)*.025,12,12]}/><meshStandardMaterial color={['#e4b96e','#85b978','#d87052','#f0dfb5'][i%4]} emissive={i%4===1?'#285734':'#000000'} emissiveIntensity=.3/></mesh>})}</group><group ref={money} position={[0,-5,0]}><MoneyFlow accent={accent}/></group><group ref={leaks}>{[-1.2,-.4,.45,1.2].map((x,i)=><mesh key={x} position={[x,(i%2)*.55,0]}><sphereGeometry args={[.12+i*.018,16,16]}/><meshBasicMaterial color="#ff5d4e"/></mesh>)}</group><group ref={dash} position={[0,2,-9]}><Dashboard/></group>{menuOpen&&<group position={[0,1.2,0]}>{[['profit',-3,-2],['operations',3,-2],['inventory',3,2],['guest',-3,2],['ai',0,-3.6],['discovery',0,3.8]].map(([r,x,z])=><mesh key={r} position={[x,.35,z]} scale={hover===r?1.5:1}><icosahedronGeometry args={[.28,2]}/><meshStandardMaterial color={pages[r].accent} emissive={pages[r].accent} emissiveIntensity={hover===r?2:.65} wireframe/></mesh>)}</group>}</group>}
-function Scene({progress,page,menuOpen,hover}){const mobile=innerWidth<760;return <Canvas dpr={[1,mobile?1:1.25]} shadows={!mobile} camera={{fov:42,position:[0,4.6,12]}} gl={{antialias:!mobile,powerPreference:'high-performance'}}><color attach="background" args={['#030705']}/><fog attach="fog" args={['#030705',8,26]}/><ambientLight intensity={.45}/><directionalLight position={[6,8,4]} intensity={2.4} color="#ffe3b4" castShadow={!mobile}/><pointLight position={[-5,3,3]} intensity={32} distance={13} color={page.accent}/><World progress={progress} page={page} menuOpen={menuOpen} hover={hover}/><Environment preset="warehouse"/>{!mobile&&<EffectComposer multisampling={0}><Bloom intensity={.45} luminanceThreshold={.55} mipmapBlur/><Noise opacity={.02}/><Vignette eskil={false} offset={.12} darkness={.7}/></EffectComposer>}</Canvas>}
-function FullMenu({open,onClose,setHover}){const nav=[['Platform','platform'],['Profit OS','profit'],['Operations','operations'],['Inventory','inventory'],['Guest Experience','guest'],['AI Intelligence','ai'],['Discovery','discovery'],['Pricing','pricing'],['About','about']];return <div className={open?'immersive-menu open':'immersive-menu'}><button className="menu-close" onClick={onClose}><X/></button><div className="menu-copy"><p className="eyebrow">THE RESTAURANT IS THE MAP</p><h2>Enter any part of the Munaffa world.</h2><p>Hover a system and the 3D scene reacts. Click to fly into that story.</p></div><nav>{nav.map(([l,r],i)=><button key={r} onMouseEnter={()=>setHover(r)} onMouseLeave={()=>setHover(null)} onClick={()=>{onClose();go(r)}}><small>{String(i+1).padStart(2,'0')}</small><span>{l}</span><ArrowRight/></button>)}</nav></div>}
-export default function ImmersiveMarketing(){const route=(location.hash.slice(1)||'home').split('/')[0];const page=pages[route]||pages.home;const progress=useScrollProgress();const[menuOpen,setMenuOpen]=useState(false);const[hover,setHover]=useState(null);useTextMotion(route);return <div className="marketing" style={{'--accent':page.accent}}><div className="world-layer"><Scene progress={progress} page={page} menuOpen={menuOpen} hover={hover}/></div><header className="site-nav"><button className="brand-button" onClick={()=>go('home')}><b>M</b><strong>Munaffa</strong></button><nav><button onClick={()=>go('platform')}>Platform</button><button onClick={()=>go('profit')}>Profit</button><button onClick={()=>go('operations')}>Operations</button><button onClick={()=>go('inventory')}>Inventory</button><button onClick={()=>go('discovery')}>Discover</button><button onClick={()=>go('pricing')}>Pricing</button></nav><div><button className="nav-sign" onClick={()=>go('auth')}>Sign in</button><button className="nav-cta" onClick={()=>go('signup')}>Get started</button><button className="round-menu" onClick={()=>setMenuOpen(true)}><Menu/></button></div></header><FullMenu open={menuOpen} onClose={()=>setMenuOpen(false)} setHover={setHover}/><main className="story"><section className="story-hero"><div className="hero-copy"><p className="eyebrow reveal-line">{page.eyebrow}</p><h1 className="reveal-line">{page.title}</h1><p className="lead reveal-line">{page.body}</p><div className="hero-actions reveal-line"><button className="primary" onClick={()=>go('signup')}>Start Munaffa <ArrowRight/></button><button className="secondary" onClick={()=>go('consumer/explore')}><Compass/> Explore nearby</button></div><div className="hero-proof reveal-line"><span><b>Hybrid service</b> QR is optional</span><span><b>Offline-aware</b> rush hour resilient</span><span><b>Profit-first</b> evidence behind alerts</span></div></div><div className="scroll-cue"><MousePointer2/><span>SCROLL TO DIRECT THE WORLD</span><ChevronDown/></div></section>{chapters.map((c,i)=><section className={'story-chapter chapter-'+i} key={c[0]}><div className="chapter-number">{c[0]}</div><div className="chapter-copy"><p className="eyebrow">{c[1]}</p><h2 className="reveal-line">{c[2]}</h2><p>{i===0?'Discovery can begin with location, cuisine, vibe, rating, distance or a direct restaurant relationship.':i===1?'The guest chooses digital or human service. Munaffa does not force a phone number just to see a menu.':i===2?'Orders reach the correct preparation station, while manager and waiter timing remains visible.':i===3?'Recipes translate sales into theoretical stock movement while respecting batch prep and kitchen reality.':i===4?'Physical counts, waste, purchasing and supplier price history expose what actually happened.':i===5?'Potential leakage is separated from healthy contribution with confidence labels and investigation paths.':i===6?'The owner sees what changed, what it cost and what action is worth considering.':'Guest feedback, CRM and demand history return into the loop without selling customer data.'}</p></div><div className="chapter-progress"><span style={{width:`${Math.max(0,Math.min(100,(progress*8-i)*100))}%`}}/></div></section>)}<section className="kinetic"><div className="kinetic-word">ORDER → KITCHEN → STOCK → GUEST → PROFIT</div></section><section className="final-cta"><p className="eyebrow">ONE RESTAURANT. ONE OPERATING TRUTH.</p><h2 className="reveal-line">Know where every rupee goes.</h2><p className="reveal-line">Open Munaffa as a guest, owner, manager, cashier, waiter, kitchen operator, stock manager or platform admin.</p><div className="hero-actions"><button className="primary" onClick={()=>go('signup')}>Create account <ArrowRight/></button><button className="secondary" onClick={()=>go('consumer/explore')}><QrCode/> Try guest experience</button></div></section></main><button className="story-progress"><span style={{height:`${progress*100}%`}}/><small>{String(Math.min(8,Math.floor(progress*8)+1)).padStart(2,'0')}</small></button></div>}
+
+const cameraPath=[
+ [0,4.6,12],[4.8,2.3,7],[-4.5,2.2,6],[2.7,2.1,5],[-2.8,2.8,5.8],[0,1.8,4.2],[0,3.2,8],[0,6.5,12]
+];
+const lerp=(a,b,t)=>a+(b-a)*t;
+const clamp=v=>Math.max(0,Math.min(1,v));
+
+function useScrollProgress(){
+ const[p,setP]=useState(0);
+ useEffect(()=>{
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let lenis,id;
+  if(!reduce&&innerWidth>900){
+   lenis=new Lenis({duration:1.08,wheelMultiplier:.82,smoothWheel:true});
+   const loop=t=>{lenis.raf(t);id=requestAnimationFrame(loop)};
+   id=requestAnimationFrame(loop);
+  }
+  return()=>{if(id)cancelAnimationFrame(id);lenis?.destroy()};
+ },[]);
+ useEffect(()=>{
+  let id=0;
+  const read=()=>{
+   if(id)return;
+   id=requestAnimationFrame(()=>{
+    const max=document.documentElement.scrollHeight-innerHeight;
+    setP(max?scrollY/max:0);
+    id=0;
+   });
+  };
+  addEventListener('scroll',read,{passive:true});
+  read();
+  return()=>removeEventListener('scroll',read);
+ },[]);
+ return p;
+}
+
+function useTextMotion(key){
+ useEffect(()=>{
+  const ctx=gsap.context(()=>{
+   document.querySelectorAll('.reveal-line').forEach(el=>gsap.fromTo(el,
+    {y:90,opacity:0,rotateX:-12,filter:'blur(18px)'},
+    {y:0,opacity:1,rotateX:0,filter:'blur(0px)',ease:'none',scrollTrigger:{trigger:el,start:'top 92%',end:'top 56%',scrub:true}}
+   ));
+   document.querySelectorAll('.chapter-copy').forEach(el=>gsap.fromTo(el,
+    {opacity:.15,x:80},
+    {opacity:1,x:0,ease:'none',scrollTrigger:{trigger:el,start:'top 80%',end:'top 46%',scrub:true}}
+   ));
+   document.querySelectorAll('.kinetic-word').forEach(el=>gsap.to(el,{xPercent:-22,ease:'none',scrollTrigger:{trigger:el.parentElement,start:'top bottom',end:'bottom top',scrub:true}}));
+  });
+  return()=>ctx.revert();
+ },[key]);
+}
+
+function RestaurantTable(){
+ return <group>
+  <mesh position={[0,.65,0]} castShadow><cylinderGeometry args={[1.55,1.35,.12,48]}/><meshStandardMaterial color="#4b2f21" roughness={.38}/></mesh>
+  <mesh position={[0,.18,0]}><cylinderGeometry args={[.24,.38,.85,32]}/><meshStandardMaterial color="#171c18" metalness={.5}/></mesh>
+  {[0,Math.PI/2,Math.PI,Math.PI*1.5].map((a,i)=><group key={i} position={[Math.cos(a)*2,.35,Math.sin(a)*2]} rotation={[0,-a,0]}><mesh><boxGeometry args={[.72,.72,.72]}/><meshStandardMaterial color="#242820" roughness={.7}/></mesh></group>)}
+ </group>;
+}
+
+function MenuPhone(){
+ return <group>
+  <mesh castShadow><boxGeometry args={[1.25,2.55,.12]}/><meshStandardMaterial color="#050706" metalness={.82} roughness={.18}/></mesh>
+  <mesh position={[0,0,.065]}><planeGeometry args={[1.08,2.34]}/><meshBasicMaterial color="#f6f0e5"/></mesh>
+  {[-.73,-.35,.05,.44,.82].map((y,i)=><mesh key={y} position={[0,y,.071]}><planeGeometry args={[.82,i===0?.28:.22]}/><meshBasicMaterial color={i===0?'#246744':['#ddb66f','#d86d54','#91b877','#d4c7a2'][i-1]}/></mesh>)}
+ </group>;
+}
+
+function KitchenStation(){
+ return <group>
+  <mesh castShadow position={[0,.55,0]}><boxGeometry args={[5,1.1,1.6]}/><meshStandardMaterial color="#a99779" metalness={.25} roughness={.35}/></mesh>
+  <mesh position={[0,1.45,-.4]}><boxGeometry args={[4.2,.75,.08]}/><meshStandardMaterial color="#14261b" emissive="#2c7b4d" emissiveIntensity={.5}/></mesh>
+  {[-1.6,-.5,.6,1.7].map((x,i)=><mesh key={x} position={[x,2.05,0]}><boxGeometry args={[.7,.35,.55]}/><meshStandardMaterial color={['#e09f62','#f2d399','#82b477','#d97758'][i]}/></mesh>)}
+ </group>;
+}
+
+function Pantry(){
+ return <group>{[0,1,2].map(y=><group key={y} position={[0,y,0]}>{[-1.5,-.5,.5,1.5].map((x,i)=><mesh key={x} position={[x,.35,0]} castShadow><boxGeometry args={[.7,.65,.8]}/><meshStandardMaterial color={['#efbd68','#e4d7b5','#8ebd77','#c96f50'][i]} roughness={.58}/></mesh>)}</group>)}</group>;
+}
+
+function MoneyFlow({accent}){
+ const points=useMemo(()=>{
+  const a=new Float32Array(240*3);
+  for(let i=0;i<240;i++){
+   const t=i/240*10;
+   a[i*3]=(t-5)+Math.sin(t*2)*.45;
+   a[i*3+1]=1.7+Math.cos(t*1.7)*.65;
+   a[i*3+2]=Math.sin(t)*1.2;
+  }
+  return a;
+ },[]);
+ return <points><bufferGeometry><bufferAttribute attach="attributes-position" args={[points,3]}/></bufferGeometry><pointsMaterial color={accent} size={.07} transparent opacity={.85} depthWrite={false}/></points>;
+}
+
+function DiscoveryCity(){
+ const positions=[[-3,0,-1],[0,0,-2],[3,0,-.8],[-2,0,2],[2.5,0,2.4]];
+ const colors=['#b9ef83','#ffb86d','#7bdcff','#ff9b7e','#aa96ff'];
+ return <group>{positions.map((p,i)=><group key={i} position={p}>
+  <mesh position={[0,.7,0]} castShadow><boxGeometry args={[1.5,1.4+(i%3)*.55,1.5]}/><meshStandardMaterial color={i===2?'#234b35':'#171e19'} roughness={.68}/></mesh>
+  <mesh position={[0,1.7+(i%3)*.28,0]}><sphereGeometry args={[.13,16,16]}/><meshBasicMaterial color={colors[i]}/></mesh>
+ </group>)}</group>;
+}
+
+function OwnerDashboard(){
+ return <group>
+  {[-2.8,-1.4,0,1.4,2.8].map((x,i)=><mesh key={x} position={[x,(i%2)*.4,0]}><boxGeometry args={[1.15,1.3,.08]}/><meshStandardMaterial color={i===4?'#69231f':'#eaf0e8'} emissive={i===4?'#ff5c4d':'#183924'} emissiveIntensity={.22}/></mesh>)}
+  <mesh position={[0,-1.4,0]}><boxGeometry args={[7.2,1.1,.08]}/><meshStandardMaterial color="#eaf0e8" emissive="#173323" emissiveIntensity={.15}/></mesh>
+ </group>;
+}
+
+function World({progress,page,menuOpen,hover}){
+ const root=useRef(),city=useRef(),table=useRef(),phone=useRef(),kitchen=useRef(),pantry=useRef(),ingredients=useRef(),money=useRef(),leaks=useRef(),dash=useRef();
+ const{camera,pointer}=useThree();
+ useFrame((state,dt)=>{
+  const p=clamp(progress),f=p*7,i=Math.min(6,Math.floor(f)),t=f-i;
+  const a=cameraPath[i],b=cameraPath[i+1]||a;
+  const target=new THREE.Vector3(lerp(a[0],b[0],t),lerp(a[1],b[1],t),lerp(a[2],b[2],t));
+  if(menuOpen)target.set(0,10.5,10.5);
+  camera.position.lerp(target,1-Math.pow(.002,dt));
+  camera.lookAt(0,menuOpen?0:1,0);
+  root.current.rotation.y=THREE.MathUtils.lerp(root.current.rotation.y,pointer.x*.08+(p-.5)*.12,dt*3);
+  root.current.rotation.x=THREE.MathUtils.lerp(root.current.rotation.x,-pointer.y*.025,dt*3);
+  const stage=Math.round(p*7);
+  city.current.position.y=THREE.MathUtils.lerp(city.current.position.y,stage===0?0:-4,dt*3);
+  city.current.scale.setScalar(THREE.MathUtils.lerp(city.current.scale.x,stage===0?1.15:.5,dt*3));
+  table.current.position.x=THREE.MathUtils.lerp(table.current.position.x,stage===1?-1.5:-6,dt*3);
+  phone.current.position.x=THREE.MathUtils.lerp(phone.current.position.x,stage===1||stage===2?2.1:6,dt*3);
+  phone.current.rotation.y+=dt*.18;
+  kitchen.current.position.z=THREE.MathUtils.lerp(kitchen.current.position.z,stage===2?0:-7,dt*3);
+  pantry.current.position.y=THREE.MathUtils.lerp(pantry.current.position.y,stage===4?0:-5,dt*3);
+  ingredients.current.rotation.y+=dt*(.35+p);
+  ingredients.current.scale.setScalar(THREE.MathUtils.lerp(ingredients.current.scale.x,stage===3?1.25:.4,dt*3));
+  money.current.position.y=THREE.MathUtils.lerp(money.current.position.y,stage===5?0:-5,dt*3);
+  leaks.current.position.y=1.8+Math.sin(state.clock.elapsedTime*1.5)*.18;
+  leaks.current.scale.setScalar(stage===5?1:.01);
+  dash.current.position.z=THREE.MathUtils.lerp(dash.current.position.z,stage>=6?0:-9,dt*3);
+ });
+ const nodeData=[['profit',-3,-2],['operations',3,-2],['inventory',3,2],['guest',-3,2],['ai',0,-3.6],['discovery',0,3.8]];
+ return <group ref={root}>
+  <mesh rotation={[-Math.PI/2,0,0]} position={[0,-.02,0]}><planeGeometry args={[35,35]}/><MeshReflectorMaterial blur={[250,90]} resolution={512} mixBlur={1} mixStrength={12} roughness={.78} depthScale={.3} color="#07100b" metalness={.05}/></mesh>
+  <group ref={city}><DiscoveryCity/></group>
+  <group ref={table} position={[-6,0,.5]}><RestaurantTable/></group>
+  <Float speed={1.3} floatIntensity={.2} rotationIntensity={.08}><group ref={phone} position={[6,2,1]}><MenuPhone/></group></Float>
+  <group ref={kitchen} position={[0,0,-7]}><KitchenStation/></group>
+  <group ref={pantry} position={[2.8,-5,1]}><Pantry/></group>
+  <group ref={ingredients} position={[-1,2,-1]}>{Array.from({length:30},(_,i)=>{const a=i/30*Math.PI*2,r=1.2+(i%4)*.25;return <mesh key={i} position={[Math.cos(a)*r,Math.sin(a*3)*.65,Math.sin(a)*r]}><sphereGeometry args={[.08+(i%3)*.025,12,12]}/><meshStandardMaterial color={['#e4b96e','#85b978','#d87052','#f0dfb5'][i%4]} emissive={i%4===1?'#285734':'#000000'} emissiveIntensity={.3}/></mesh>})}</group>
+  <group ref={money} position={[0,-5,0]}><MoneyFlow accent={page.accent}/></group>
+  <group ref={leaks}>{[-1.2,-.4,.45,1.2].map((x,i)=><mesh key={x} position={[x,(i%2)*.55,0]}><sphereGeometry args={[.12+i*.018,16,16]}/><meshBasicMaterial color="#ff5d4e"/></mesh>)}</group>
+  <group ref={dash} position={[0,2,-9]}><OwnerDashboard/></group>
+  {menuOpen&&<group position={[0,1.2,0]}>{nodeData.map(([r,x,z])=><mesh key={r} position={[x,.35,z]} scale={hover===r?1.5:1}><icosahedronGeometry args={[.28,2]}/><meshStandardMaterial color={pages[r].accent} emissive={pages[r].accent} emissiveIntensity={hover===r?2:.65} wireframe/></mesh>)}</group>}
+ </group>;
+}
+
+function Scene({progress,page,menuOpen,hover}){
+ const mobile=innerWidth<760;
+ return <Canvas dpr={[1,mobile?1:1.25]} shadows={!mobile} camera={{fov:42,position:[0,4.6,12]}} gl={{antialias:!mobile,powerPreference:'high-performance'}}>
+  <color attach="background" args={['#030705']}/><fog attach="fog" args={['#030705',8,26]}/>
+  <ambientLight intensity={.45}/><directionalLight position={[6,8,4]} intensity={2.4} color="#ffe3b4" castShadow={!mobile}/><pointLight position={[-5,3,3]} intensity={32} distance={13} color={page.accent}/>
+  <World progress={progress} page={page} menuOpen={menuOpen} hover={hover}/><Environment preset="warehouse"/>
+  {!mobile&&<EffectComposer multisampling={0}><Bloom intensity={.45} luminanceThreshold={.55} mipmapBlur/><Noise opacity={.02}/><Vignette eskil={false} offset={.12} darkness={.7}/></EffectComposer>}
+ </Canvas>;
+}
+
+function FullMenu({open,onClose,setHover}){
+ const nav=[['Platform','platform'],['Profit OS','profit'],['Operations','operations'],['Inventory','inventory'],['Guest Experience','guest'],['AI Intelligence','ai'],['Discovery','discovery'],['Pricing','pricing'],['About','about']];
+ return <div className={open?'immersive-menu open':'immersive-menu'}><button className="menu-close" onClick={onClose}><X/></button><div className="menu-copy"><p className="eyebrow">THE RESTAURANT IS THE MAP</p><h2>Enter any part of the Munaffa world.</h2><p>Hover a system and the 3D scene reacts. Click to fly into that story.</p></div><nav>{nav.map(([label,route],i)=><button key={route} onMouseEnter={()=>setHover(route)} onMouseLeave={()=>setHover(null)} onClick={()=>{onClose();go(route)}}><small>{String(i+1).padStart(2,'0')}</small><span>{label}</span><ArrowRight/></button>)}</nav></div>;
+}
+
+const detailText=i=>[
+ 'Discovery can begin with location, cuisine, vibe, rating, distance or a direct restaurant relationship.',
+ 'The guest chooses digital or human service. Munaffa does not force a phone number just to see a menu.',
+ 'Orders reach the correct preparation station, while manager and waiter timing remains visible.',
+ 'Recipes translate sales into theoretical stock movement while respecting batch prep and kitchen reality.',
+ 'Physical counts, waste, purchasing and supplier price history expose what actually happened.',
+ 'Potential leakage is separated from healthy contribution with confidence labels and investigation paths.',
+ 'The owner sees what changed, what it cost and what action is worth considering.',
+ 'Guest feedback, CRM and demand history return into the loop without selling customer data.'
+][i];
+
+export default function ImmersiveMarketing(){
+ const route=(location.hash.slice(1)||'home').split('/')[0];
+ const page=pages[route]||pages.home;
+ const progress=useScrollProgress();
+ const[menuOpen,setMenuOpen]=useState(false);
+ const[hover,setHover]=useState(null);
+ useTextMotion(route);
+ return <div className="marketing" style={{'--accent':page.accent}}>
+  <div className="world-layer"><Scene progress={progress} page={page} menuOpen={menuOpen} hover={hover}/></div>
+  <header className="site-nav"><button className="brand-button" onClick={()=>go('home')}><b>M</b><strong>Munaffa</strong></button><nav><button onClick={()=>go('platform')}>Platform</button><button onClick={()=>go('profit')}>Profit</button><button onClick={()=>go('operations')}>Operations</button><button onClick={()=>go('inventory')}>Inventory</button><button onClick={()=>go('discovery')}>Discover</button><button onClick={()=>go('pricing')}>Pricing</button></nav><div><button className="nav-sign" onClick={()=>go('auth')}>Sign in</button><button className="nav-cta" onClick={()=>go('signup')}>Get started</button><button className="round-menu" onClick={()=>setMenuOpen(true)}><Menu/></button></div></header>
+  <FullMenu open={menuOpen} onClose={()=>setMenuOpen(false)} setHover={setHover}/>
+  <main className="story"><section className="story-hero"><div className="hero-copy"><p className="eyebrow reveal-line">{page.eyebrow}</p><h1 className="reveal-line">{page.title}</h1><p className="lead reveal-line">{page.body}</p><div className="hero-actions reveal-line"><button className="primary" onClick={()=>go('signup')}>Start Munaffa <ArrowRight/></button><button className="secondary" onClick={()=>go('consumer/explore')}><Compass/> Explore nearby</button></div><div className="hero-proof reveal-line"><span><b>Hybrid service</b> QR is optional</span><span><b>Offline-aware</b> rush hour resilient</span><span><b>Profit-first</b> evidence behind alerts</span></div></div><div className="scroll-cue"><MousePointer2/><span>SCROLL TO DIRECT THE WORLD</span><ChevronDown/></div></section>
+   {chapters.map((c,i)=><section className={'story-chapter chapter-'+i} key={c[0]}><div className="chapter-number">{c[0]}</div><div className="chapter-copy"><p className="eyebrow">{c[1]}</p><h2 className="reveal-line">{c[2]}</h2><p>{detailText(i)}</p></div><div className="chapter-progress"><span style={{width:`${Math.max(0,Math.min(100,(progress*8-i)*100))}%`}}/></div></section>)}
+   <section className="kinetic"><div className="kinetic-word">ORDER → KITCHEN → STOCK → GUEST → PROFIT</div></section>
+   <section className="final-cta"><p className="eyebrow">ONE RESTAURANT. ONE OPERATING TRUTH.</p><h2 className="reveal-line">Know where every rupee goes.</h2><p className="reveal-line">Open Munaffa as a guest, owner, manager, cashier, waiter, kitchen operator, stock manager or platform admin.</p><div className="hero-actions"><button className="primary" onClick={()=>go('signup')}>Create account <ArrowRight/></button><button className="secondary" onClick={()=>go('consumer/explore')}><QrCode/> Try guest experience</button></div></section>
+  </main>
+  <button className="story-progress"><span style={{height:`${progress*100}%`}}/><small>{String(Math.min(8,Math.floor(progress*8)+1)).padStart(2,'0')}</small></button>
+ </div>;
+}
