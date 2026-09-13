@@ -36,16 +36,16 @@ const driverMat=new THREE.MeshStandardMaterial({color:'#a86e42',metalness:.82,ro
 const copper=new THREE.MeshStandardMaterial({color:'#92552f',metalness:.9,roughness:.22});
 const meshMat=new THREE.MeshStandardMaterial({color:'#bddff0',transparent:true,opacity:.18,metalness:.15,roughness:.28,depthWrite:false});
 const product=new THREE.Group();scene.add(product);
-const colorMeshes=[],explodeParts=[],partMap=new Map();
+const explodeParts=[],partMap=new Map();
 const seg=lowDevice?36:56;
 function tube(points,r,mat){return new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p))),seg,r,10,false),mat)}
-function reg(mesh,name,vector=null,colorable=false){mesh.userData.partName=name;if(vector){mesh.userData.base=mesh.position.clone();mesh.userData.vector=new THREE.Vector3(...vector);explodeParts.push(mesh)}if(colorable)colorMeshes.push(mesh);partMap.set(name,mesh);return mesh}
+function reg(mesh,name,vector=null){mesh.userData.partName=name;if(vector){mesh.userData.base=mesh.position.clone();mesh.userData.vector=new THREE.Vector3(...vector);explodeParts.push(mesh)}partMap.set(name,mesh);return mesh}
 
-const band=tube([[-2.12,.68,0],[-1.9,2.25,0],[-1.02,3.12,0],[0,3.42,0],[1.02,3.12,0],[1.9,2.25,0],[2.12,.68,0]],.19,metal);reg(band,'Headband',null,true);product.add(band);
+const band=tube([[-2.12,.68,0],[-1.9,2.25,0],[-1.02,3.12,0],[0,3.42,0],[1.02,3.12,0],[1.9,2.25,0],[2.12,.68,0]],.19,metal);reg(band,'Headband');product.add(band);
 product.add(tube([[-1.88,.8,.02],[-1.68,2.1,.02],[-.88,2.85,.02],[0,3.05,.02],[.88,2.85,.02],[1.68,2.1,.02],[1.88,.8,.02]],.135,cushion));
 function addCup(side){
   const g=new THREE.Group();g.position.set(side*2.05,.02,0);product.add(g);
-  const shell=new THREE.Mesh(new THREE.CylinderGeometry(.91,.91,.43,seg),metal);shell.rotation.z=Math.PI/2;reg(shell,'Outer shell',[side*.68,0,0],true);g.add(shell);
+  const shell=new THREE.Mesh(new THREE.CylinderGeometry(.91,.91,.43,seg),metal);shell.rotation.z=Math.PI/2;reg(shell,'Outer shell',[side*.68,0,0]);g.add(shell);
   const ring=new THREE.Mesh(new THREE.TorusGeometry(.81,.048,12,seg),trim);ring.rotation.y=Math.PI/2;ring.position.x=side*.23;reg(ring,'Machined ring',[side*.94,0,0]);g.add(ring);
   const plate=new THREE.Mesh(new THREE.CylinderGeometry(.70,.70,.018,seg),dark);plate.rotation.z=Math.PI/2;plate.position.x=side*.225;reg(plate,'Outer plate',[side*1.15,0,0]);g.add(plate);
   const pad=new THREE.Mesh(new THREE.TorusGeometry(.67,.17,16,seg),cushion);pad.rotation.y=Math.PI/2;pad.scale.y=1.08;pad.position.x=-side*.26;reg(pad,'Memory foam cushion',[-side*.92,0,0]);g.add(pad);
@@ -54,7 +54,7 @@ function addCup(side){
   const coil=new THREE.Mesh(new THREE.TorusGeometry(.30,.042,10,seg),copper);coil.rotation.y=Math.PI/2;coil.position.x=-side*.06;reg(coil,'Voice coil',[-side*1.98,0,0]);g.add(coil);
   const magnet=new THREE.Mesh(new THREE.CylinderGeometry(.24,.24,.12,seg),trim);magnet.rotation.z=Math.PI/2;magnet.position.x=-side*.01;reg(magnet,'Magnet array',[-side*2.28,0,0]);g.add(magnet);
   const grille=new THREE.Mesh(new THREE.CylinderGeometry(.5,.5,.012,seg),meshMat);grille.rotation.z=Math.PI/2;grille.position.x=-side*.22;reg(grille,'Acoustic mesh',[-side*1.08,0,0]);g.add(grille);
-  const yoke=tube([[side*1.94,.25,0],[side*2.25,.72,0],[side*2.15,1.26,0],[side*1.88,1.62,0]],.07,trim);product.add(yoke);
+  product.add(tube([[side*1.94,.25,0],[side*2.25,.72,0],[side*2.15,1.26,0],[side*1.88,1.62,0]],.07,trim));
   const hinge=new THREE.Mesh(new THREE.BoxGeometry(.3,.38,.25),trim);hinge.position.set(side*1.92,1.61,0);hinge.rotation.z=-side*.17;product.add(hinge);
 }
 addCup(-1);addCup(1);
@@ -81,21 +81,21 @@ const states={
  finale:{p:[0,-.45,-.35],r:[0,-.06,0],s:.82,c:[0,.3,9.1],t:[0,.35,0],ex:0,bg:'#030405',rim:'#9fdcff',warm:'#d09b68',halo:.16}
 };
 function blendState(a,b,t){t=t*t*(3-2*t);return{p:a.p.map((v,i)=>lerp(v,b.p[i],t)),r:a.r.map((v,i)=>lerp(v,b.r[i],t)),s:lerp(a.s,b.s,t),c:a.c.map((v,i)=>lerp(v,b.c[i],t)),t:a.t.map((v,i)=>lerp(v,b.t[i],t)),ex:lerp(a.ex,b.ex,t),bg:new THREE.Color(a.bg).lerp(new THREE.Color(b.bg),t),rim:new THREE.Color(a.rim).lerp(new THREE.Color(b.rim),t),warm:new THREE.Color(a.warm).lerp(new THREE.Color(b.warm),t),halo:lerp(a.halo,b.halo,t)}}
-const chapters=$$('.chapter');let layout=[];let activeIndex=0;let targetState=states.hero;let pointerX=0,pointerY=0;let manualExplode=null;
+const chapters=$$('.chapter');let layout=[];let activeIndex=0;let targetState=states.hero;let pointerX=0,pointerY=0;let manualExplode=null;let needsMotion=1;
 function measure(){layout=chapters.map(el=>({el,top:el.offsetTop,height:el.offsetHeight,state:states[el.dataset.scene]}));updateScroll(true)}
-function updateScroll(force=false){const y=scrollY+innerHeight*.48;let idx=0;for(let i=0;i<layout.length;i++){if(y>=layout[i].top)idx=i;else break}activeIndex=idx;const cur=layout[idx],next=layout[Math.min(idx+1,layout.length-1)];const p=clamp((y-cur.top)/Math.max(cur.height,1));targetState=blendState(cur.state,next.state,p);const overall=clamp(scrollY/Math.max(document.documentElement.scrollHeight-innerHeight,1));$('#railProgress').style.height=`${overall*100}%`;$('#chapterIndex').textContent=String(idx+1).padStart(2,'0');$('#chapterLabel').textContent=cur.el.dataset.label||'';if(cur.el.id!=='engineering')manualExplode=null;needsMotion=1}
-addEventListener('scroll',()=>updateScroll(),{passive:true});
+function updateScroll(){const y=scrollY+innerHeight*.48;let idx=0;for(let i=0;i<layout.length;i++){if(y>=layout[i].top)idx=i;else break}activeIndex=idx;const cur=layout[idx],next=layout[Math.min(idx+1,layout.length-1)];const p=clamp((y-cur.top)/Math.max(cur.height,1));targetState=blendState(cur.state,next.state,p);const overall=clamp(scrollY/Math.max(document.documentElement.scrollHeight-innerHeight,1));$('#railProgress').style.height=`${overall*100}%`;$('#chapterIndex').textContent=String(idx+1).padStart(2,'0');$('#chapterLabel').textContent=cur.el.dataset.label||'';if(cur.el.id!=='engineering')manualExplode=null;needsMotion=1}
+addEventListener('scroll',updateScroll,{passive:true});
 
-let activeModel='pro',modelScale=1,activeColor='#171a1f',activeColorName='Midnight Black';
+let activeModel='pro',modelScale=1,activeColorName='Midnight Black';
 const models={pro:{name:'NEXA Pro',tag:'Precision in every detail.',price:'₹24,999',scale:1,color:'#171a1f'},go:{name:'NEXA Go',tag:'Light enough to move.',price:'₹17,999',scale:.92,color:'#b69774'},air:{name:'NEXA Air',tag:'Everyday freedom.',price:'₹9,999',scale:.86,color:'#173b5b'}};
-function setModel(id){const m=models[id];activeModel=id;modelScale=m.scale;activeColor=m.color;activeColorName=id==='pro'?'Midnight Black':id==='go'?'Desert Gold':'Deep Blue';metal.color.set(activeColor);$('#productName').textContent=m.name;$('#productTagline').textContent=m.tag;$('#productPrice').textContent=m.price;$('#cartProductName').textContent=m.name;$('#cartColorName').textContent=activeColorName;$('#cartPrice').textContent=$('#cartSubtotal').textContent=$('#cartTotal').textContent=m.price;$$('.product-option').forEach(b=>{const on=b.dataset.model===id;b.classList.toggle('active',on);b.setAttribute('aria-selected',String(on))});showToast(`${m.name} selected`);needsMotion=1}
+function setModel(id){const m=models[id];activeModel=id;modelScale=m.scale;activeColorName=id==='pro'?'Midnight Black':id==='go'?'Desert Gold':'Deep Blue';metal.color.set(m.color);$('#productName').textContent=m.name;$('#productTagline').textContent=m.tag;$('#productPrice').textContent=m.price;$('#finishName').textContent=activeColorName;$('#cartProductName').textContent=m.name;$('#cartColorName').textContent=activeColorName;$('#cartPrice').textContent=$('#cartSubtotal').textContent=$('#cartTotal').textContent=m.price;$$('.product-option').forEach(b=>{const on=b.dataset.model===id;b.classList.toggle('active',on);b.setAttribute('aria-selected',String(on))});showToast(`${m.name} selected`);needsMotion=1}
 $$('.product-option').forEach(b=>b.addEventListener('click',()=>setModel(b.dataset.model)));
-$$('.color-swatch').forEach(b=>b.addEventListener('click',()=>{activeColor=b.dataset.color;activeColorName=b.dataset.name;metal.color.set(activeColor);$('#finishName').textContent=activeColorName;$('#cartColorName').textContent=activeColorName;$$('.color-swatch').forEach(x=>x.classList.toggle('active',x===b));showToast(activeColorName);needsMotion=1}));
+$$('.color-swatch').forEach(b=>b.addEventListener('click',()=>{activeColorName=b.dataset.name;metal.color.set(b.dataset.color);$('#finishName').textContent=activeColorName;$('#cartColorName').textContent=activeColorName;$$('.color-swatch').forEach(x=>x.classList.toggle('active',x===b));showToast(activeColorName);needsMotion=1}));
 
-$$('#componentList button').forEach(b=>b.addEventListener('click',()=>{const key=b.dataset.part;manualExplode=.92;$$('#componentList button').forEach(x=>x.classList.toggle('active',x===b));$('#partReadout').textContent=`Focused: ${key}`;const part=partMap.get(key);if(part){part.userData.flash=1}showToast(key);needsMotion=1}));
+$$('#componentList button').forEach(b=>b.addEventListener('click',()=>{const key=b.dataset.part;manualExplode=.92;$$('#componentList button').forEach(x=>x.classList.toggle('active',x===b));$('#partReadout').textContent=`Focused: ${key}`;const part=partMap.get(key);if(part)part.userData.flash=1;showToast(key);needsMotion=1}));
 const profiles={reference:{label:'NEXA Reference',path:'M40,156 C85,125 120,112 160,118 S250,152 300,137 S385,100 430,112 S505,147 555,129 S625,91 680,108'},warm:{label:'Warm Focus',path:'M40,138 C90,102 135,100 175,112 S245,145 300,140 S390,118 445,122 S525,142 575,133 S635,114 680,121'},detail:{label:'Detail Focus',path:'M40,166 C90,145 130,132 175,130 S250,144 305,126 S390,92 450,101 S530,122 580,104 S640,78 680,91'}};
 $$('.profile').forEach(b=>b.addEventListener('click',()=>{const p=profiles[b.dataset.profile];$$('.profile').forEach(x=>x.classList.toggle('active',x===b));$('.freq-line').setAttribute('d',p.path);$('.freq-fill').setAttribute('d',`${p.path} L680,230 L40,230 Z`);$('#soundProfile').textContent=p.label;showToast(p.label)}));
-$$('.anc-mode').forEach(b=>b.addEventListener('click',()=>{$$('.anc-mode').forEach(x=>x.classList.toggle('active',x===b));$('#ancLabel').textContent=b.dataset.label;$('#ancDb').textContent=b.dataset.db;const aware=b.dataset.anc==='aware';$('#ancStage').style.setProperty('--ringOpacity',aware?.08:.28);showToast(b.dataset.label)}));
+$$('.anc-mode').forEach(b=>b.addEventListener('click',()=>{$$('.anc-mode').forEach(x=>x.classList.toggle('active',x===b));$('#ancLabel').textContent=b.dataset.label;$('#ancDb').textContent=b.dataset.db;const aware=b.dataset.anc==='aware';$('#ancStage').style.setProperty('--ringOpacity',aware ? '.08' : '.28');showToast(b.dataset.label)}));
 const contexts={city:84,work:68,flight:94,home:52};
 $$('.context-card').forEach(b=>b.addEventListener('click',()=>{const v=contexts[b.dataset.env];$$('.context-card').forEach(x=>x.classList.toggle('active',x===b));$('#contextMeter').style.width=`${v}%`;$('#contextValue').textContent=`${v}%`;showToast(`${b.querySelector('b').textContent} profile`)}));
 
@@ -109,18 +109,16 @@ $('#newsletterForm')?.addEventListener('submit',e=>{e.preventDefault();const inp
 
 let toastTimer;function showToast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),1400)}
 
-function applyQuality(mode,announce=true){qualityMode=mode;const q=mode==='HIGH'?Math.min(devicePixelRatio,1.55):mode==='ECO'?1:(lowDevice?1:1.3);dpr=q;renderer.setPixelRatio(dpr);renderer.setSize(innerWidth,innerHeight,false);stars.visible=mode!=='ECO'&&!lowDevice;$('#qualityToggle').textContent=mode;if(announce)showToast(`Visual quality: ${mode}`);window.__NEXA_METRICS__.dpr=dpr;window.__NEXA_METRICS__.quality=mode;needsMotion=1}
+function applyQuality(mode,announce=true){qualityMode=mode;dpr=mode==='HIGH'?Math.min(devicePixelRatio,1.55):mode==='ECO'?1:(lowDevice?1:1.3);renderer.setPixelRatio(dpr);renderer.setSize(innerWidth,innerHeight,false);stars.visible=mode!=='ECO'&&!lowDevice;$('#qualityToggle').textContent=mode;if(announce)showToast(`Visual quality: ${mode}`);window.__NEXA_METRICS__.dpr=dpr;window.__NEXA_METRICS__.quality=mode;needsMotion=1}
 $('#qualityToggle').addEventListener('click',()=>applyQuality(qualityMode==='AUTO'?'HIGH':qualityMode==='HIGH'?'ECO':'AUTO'));
-
 if(!coarse)addEventListener('pointermove',e=>{pointerX=(e.clientX/innerWidth-.5)*.16;pointerY=(e.clientY/innerHeight-.5)*.10;needsMotion=1},{passive:true});
 
 const observer=new IntersectionObserver(entries=>{for(const entry of entries){if(entry.isIntersecting&&!reduced&&!entry.target.dataset.revealed){entry.target.dataset.revealed='1';entry.target.animate([{opacity:0,transform:'translateY(24px)'},{opacity:1,transform:'translateY(0)'}],{duration:560,easing:'cubic-bezier(.2,.7,.2,1)',fill:'both'})}}},{threshold:.16});$$('.copy').forEach(el=>observer.observe(el));
 
-let needsMotion=1,last=performance.now(),fpsFrames=0,fpsStart=last,visible=true;const current={p:new THREE.Vector3(...states.hero.p),r:new THREE.Vector3(...states.hero.r),s:states.hero.s,c:new THREE.Vector3(...states.hero.c),t:new THREE.Vector3(...states.hero.t),ex:0,bg:new THREE.Color(states.hero.bg)};const camTarget=new THREE.Vector3();
-window.__NEXA_METRICS__={quality:qualityMode,dpr,fps:0,drawCalls:0,triangles:0,scrollEngine:'native',libraries:['three']};
+let last=performance.now(),fpsFrames=0,fpsStart=last,visible=true;const current={p:new THREE.Vector3(...states.hero.p),r:new THREE.Vector3(...states.hero.r),s:states.hero.s,c:new THREE.Vector3(...states.hero.c),t:new THREE.Vector3(...states.hero.t),ex:0};const camTarget=new THREE.Vector3();
+window.__NEXA_METRICS__={quality:qualityMode,dpr,fps:0,drawCalls:0,triangles:0,scrollEngine:'native',libraries:['three'],adaptiveDrop:false};
 function damp(a,b,k){return lerp(a,b,k)}
-function animate(now){requestAnimationFrame(animate);if(!visible)return;const frameBudget=qualityMode==='ECO'||lowDevice?30:16.7;if(now-last<frameBudget)return;const dt=Math.min((now-last)/16.67,2);last=now;
-  const k=reduced?1:Math.min(.16*dt,.35);const ts=targetState;
+function animate(now){requestAnimationFrame(animate);if(!visible)return;const frameBudget=qualityMode==='ECO'||lowDevice?30:16.7;if(now-last<frameBudget)return;const dt=Math.min((now-last)/16.67,2);last=now;const k=reduced?1:Math.min(.16*dt,.35);const ts=targetState;
   current.p.x=damp(current.p.x,ts.p[0],k);current.p.y=damp(current.p.y,ts.p[1],k);current.p.z=damp(current.p.z,ts.p[2],k);
   current.r.x=damp(current.r.x,ts.r[0],k);current.r.y=damp(current.r.y,ts.r[1]+pointerX,k);current.r.z=damp(current.r.z,ts.r[2],k);
   current.s=damp(current.s,ts.s*modelScale,k);current.c.x=damp(current.c.x,ts.c[0],k);current.c.y=damp(current.c.y,ts.c[1]+pointerY,k);current.c.z=damp(current.c.z,ts.c[2],k);current.t.x=damp(current.t.x,ts.t[0],k);current.t.y=damp(current.t.y,ts.t[1],k);current.t.z=damp(current.t.z,ts.t[2],k);current.ex=damp(current.ex,manualExplode??ts.ex,k);
