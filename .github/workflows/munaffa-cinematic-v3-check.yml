@@ -1,0 +1,122 @@
+name: Munaffa Cinematic V3 Check
+on:
+  push:
+    branches: [munaffa-cinematic-v3]
+  workflow_dispatch:
+jobs:
+  verify-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: munaffa-platform/apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Enforce no primitive marketing geometry
+        run: |
+          ! grep -q 'boxGeometry' src/features/ImmersiveMarketing.jsx
+          ! grep -q 'sphereGeometry' src/features/ImmersiveMarketing.jsx
+          ! grep -q 'cylinderGeometry' src/features/ImmersiveMarketing.jsx
+          ! grep -q 'MeshReflectorMaterial' src/features/ImmersiveMarketing.jsx
+          grep -q 'PhotoScene' src/features/ImmersiveMarketing.jsx
+          grep -q 'Unsplash' src/features/ImmersiveMarketing.jsx
+      - name: Install web dependencies
+        run: npm install --no-audit --no-fund
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+      - name: Build cinematic web app
+        run: npm run build
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Start preview
+        run: |
+          npm run preview -- --port 4173 >/tmp/munaffa-v3.log 2>&1 &
+          sleep 3
+      - name: Verify cinematic site and product flows
+        run: |
+          cat > verify-v3.mjs <<'EOF'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const context=await browser.newContext({viewport:{width:1440,height:900}});
+          const page=await context.newPage(); page.setDefaultTimeout(7000);
+          const errors=[];page.on('pageerror',e=>errors.push(e.message));
+          await page.goto('http://127.0.0.1:4173/#home',{waitUntil:'domcontentloaded',timeout:30000});
+          await page.waitForTimeout(2800);
+          if(errors.length)throw new Error(errors.join(' | '));
+          if(await page.locator('.cinematic-marketing').count()!==1)throw new Error('cinematic marketing missing');
+          if(await page.locator('canvas').count()!==1)throw new Error('WebGL canvas missing');
+          if(await page.locator('.cinematic-section').count()!==8)throw new Error('eight-scene story missing');
+          const hero=await page.locator('.cinematic-hero h1').textContent();if(!hero.includes('Hospitality'))throw new Error('new hero not active');
+          const canvas=await page.locator('canvas').evaluate(el=>({w:el.width,h:el.height,cw:el.clientWidth,ch:el.clientHeight}));
+          if(!canvas.w||!canvas.h||canvas.w/canvas.cw>1.5||canvas.h/canvas.ch>1.5)throw new Error('renderer profile invalid');
+          await page.locator('.round-menu').click({force:true});await page.waitForTimeout(120);
+          if(!(await page.locator('.photo-menu').evaluate(el=>el.classList.contains('open'))))throw new Error('cinematic menu failed');
+          await page.locator('.menu-close').click({force:true});
+          for(const route of ['platform','profit','operations','inventory','guest','ai','discovery','pricing','about']){
+            await page.evaluate(r=>location.hash=r,route);await page.waitForTimeout(260);
+            if(await page.locator('.cinematic-section').count()!==8)throw new Error(route+' story missing');
+          }
+          await page.evaluate(()=>{localStorage.clear();location.hash='signup'});await page.waitForTimeout(260);
+          await page.locator('input[placeholder="Your name"]').fill('Cinematic CI');
+          await page.locator('input[placeholder="you@example.com"]').fill('cinematic@example.com');
+          await page.locator('input[type="password"]').fill('password123');
+          await page.locator('button.primary.wide').click({force:true});await page.waitForTimeout(220);
+          await page.locator('.role-card').first().click({force:true});
+          for(let i=0;i<3;i++){await page.locator('.onboard footer .primary').click({force:true});await page.waitForTimeout(120)}
+          if(await page.locator('.consumer').count()!==1)throw new Error('consumer onboarding failed');
+          await page.locator('.venue-open').first().click({force:true});await page.waitForTimeout(100);
+          await page.locator('.dish-row>button').first().click({force:true});await page.waitForTimeout(180);
+          if(await page.locator('.cart-fab').count()!==1)throw new Error('cart failed');
+          await page.locator('.cart-fab').click({force:true});await page.waitForTimeout(100);
+          await page.locator('.checkout button.primary.wide').click({force:true});await page.waitForTimeout(1100);
+          if(await page.locator('.order-float').count()!==1)throw new Error('order tracker failed');
+          for(const role of ['owner','manager','cashier','waiter','kitchen','stock','admin']){
+            await page.evaluate(r=>location.hash='app/'+r,role);await page.waitForTimeout(200);
+            if(await page.locator('.ops').count()!==1)throw new Error(role+' workspace missing');
+          }
+          await page.evaluate(()=>location.hash='app/cashier');await page.waitForTimeout(180);
+          await page.locator('.pos-menu button').first().click({force:true});await page.waitForTimeout(80);
+          if(!(await page.locator('.bill-total').textContent()).includes('349'))throw new Error('POS failed');
+          await page.evaluate(()=>location.hash='app/kitchen');await page.waitForTimeout(180);
+          if(await page.locator('.kot').count()<1)throw new Error('KDS failed');
+          if(errors.length)throw new Error(errors.join(' | '));
+          await browser.close();console.log('Munaffa Cinematic V3 passed');
+          EOF
+          node verify-v3.mjs
+  verify-mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    defaults:
+      run:
+        working-directory: munaffa-platform/apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install --no-audit --no-fund
+      - run: npx expo-doctor@latest
+      - name: Verify app surfaces
+        run: |
+          grep -q 'expo-location' package.json
+          grep -q 'expo-camera' package.json
+          grep -q 'CameraView' App.jsx
+          grep -q 'createClient' App.jsx
+          grep -q 'Owner' App.jsx
+          grep -q 'Restaurant' App.jsx
+  verify-database:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Supabase schema
+        run: |
+          test -f munaffa-platform/supabase/schema.sql
+          test -f munaffa-platform/supabase/migrations/002_consumer_and_identity.sql
+          grep -q 'enable row level security' munaffa-platform/supabase/schema.sql
+          grep -q 'inventory_movements' munaffa-platform/supabase/schema.sql
+          grep -q 'reservations' munaffa-platform/supabase/migrations/002_consumer_and_identity.sql
