@@ -1,12 +1,12 @@
-name: Munaffa Full Platform Check
+name: Munaffa Immersive V2 Check
 on:
   push:
-    branches: [munaffa-official-v1]
+    branches: [munaffa-immersive-v2]
   workflow_dispatch:
 jobs:
   verify-web:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 18
     defaults:
       run:
         working-directory: munaffa-platform/apps/web
@@ -27,7 +27,7 @@ jobs:
         run: |
           npm run preview -- --port 4173 >/tmp/munaffa-web.log 2>&1 &
           sleep 3
-      - name: Verify cinematic site and operating roles
+      - name: Verify marketing, auth, consumer and restaurant OS
         run: |
           cat > verify.mjs <<'EOF'
           import { chromium } from 'playwright';
@@ -35,41 +35,59 @@ jobs:
           const context=await browser.newContext({viewport:{width:1440,height:900},reducedMotion:'reduce'});
           const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
           await page.goto('http://127.0.0.1:4173/#home',{waitUntil:'domcontentloaded',timeout:30000});
-          await page.waitForSelector('canvas');await page.waitForTimeout(900);
+          await page.waitForSelector('canvas');await page.waitForTimeout(1000);
           if(errors.length)throw new Error(errors.join('\n'));
-          const hero=await page.locator('.hero-text h1').textContent();
-          if(!hero?.includes('Munaffa'))throw new Error('home hero missing');
-          const canvas=await page.locator('canvas').evaluate(el=>({w:el.width,h:el.height,cw:el.clientWidth,ch:el.clientHeight}));
-          if(!canvas.w||!canvas.h)throw new Error('3D canvas failed');
-          if(canvas.w/canvas.cw>1.3)throw new Error('desktop DPR too high');
-          await page.locator('.cin-menu').click();
-          if(!(await page.locator('.full-menu').evaluate(el=>el.classList.contains('open'))))throw new Error('3D navigation failed');
-          await page.locator('.full-menu button').nth(1).hover();
-          await page.locator('.full-close').click();
-          for(const route of ['platform','profit','operations','inventory','guest','ai','integrations','customers','resources','pricing','about','contact']){
-            await page.evaluate(r=>location.hash=r,route);await page.waitForTimeout(130);
-            if(!(await page.locator('.hero-text h1').isVisible()))throw new Error(route+' hero missing');
-            if(!(await page.locator('canvas').isVisible()))throw new Error(route+' 3D world missing');
-            if((await page.locator('.cin-chapter').count())!==6)throw new Error(route+' chapter count');
+          if(!(await page.locator('.hero-copy h1').textContent()).includes('Munaffa'))throw new Error('home hero missing');
+          const canvas=await page.locator('canvas').evaluate(el=>({w:el.width,cw:el.clientWidth}));
+          if(!canvas.w||canvas.w/canvas.cw>1.35)throw new Error('3D renderer quality profile invalid');
+          await page.locator('.round-menu').click();
+          if(!(await page.locator('.immersive-menu').evaluate(el=>el.classList.contains('open'))))throw new Error('immersive menu failed');
+          await page.locator('.immersive-menu nav button').first().hover();
+          await page.locator('.menu-close').click();
+          for(const route of ['platform','profit','operations','inventory','guest','ai','discovery','pricing','about']){
+            await page.evaluate(r=>location.hash=r,route);await page.waitForTimeout(120);
+            if(!(await page.locator('.hero-copy h1').isVisible()))throw new Error(route+' hero missing');
+            if(!(await page.locator('canvas').isVisible()))throw new Error(route+' 3D scene missing');
+            if((await page.locator('.story-chapter').count())!==8)throw new Error(route+' chapter count');
           }
-          for(const role of ['owner','manager','cashier','waiter','kitchen','stock','admin','guest']){
+          await page.evaluate(()=>{localStorage.clear();location.hash='signup'});await page.waitForTimeout(150);
+          await page.locator('input[placeholder="Your name"]').fill('CI Guest');
+          await page.locator('input[placeholder="you@example.com"]').fill('ci@example.com');
+          await page.locator('input[type="password"]').fill('password123');
+          await page.locator('button.primary.wide').click();await page.waitForTimeout(120);
+          if(!(await page.locator('.onboard').isVisible()))throw new Error('signup/onboarding failed');
+          await page.locator('.role-card').first().click();
+          await page.getByText('Continue',{exact:true}).click();await page.waitForTimeout(80);
+          await page.getByText('Continue',{exact:true}).click();await page.waitForTimeout(80);
+          await page.getByText('Enter Munaffa',{exact:false}).click();await page.waitForTimeout(150);
+          if(!(await page.locator('.consumer').isVisible()))throw new Error('consumer mode launch failed');
+          await page.locator('.venue-open').first().click();
+          await page.locator('.dish-row>button').first().click();
+          await page.locator('.cart-fab').click();
+          if(!(await page.locator('.checkout').isVisible()))throw new Error('checkout missing');
+          await page.locator('.checkout button.primary.wide').click();await page.waitForTimeout(1050);
+          if(!(await page.locator('.order-float').isVisible()))throw new Error('order tracking missing');
+          for(const role of ['owner','manager','cashier','waiter','kitchen','stock','admin']){
             await page.evaluate(r=>location.hash='app/'+r,role);await page.waitForTimeout(100);
-            if(!(await page.locator('.operating-os').isVisible()))throw new Error(role+' workspace missing');
+            if(!(await page.locator('.ops').isVisible()))throw new Error(role+' workspace missing');
           }
+          await page.evaluate(()=>location.hash='app/owner');await page.waitForTimeout(100);
+          await page.getByText('QR Studio',{exact:true}).click();
+          if(!(await page.locator('.qr-preview svg').isVisible()))throw new Error('QR studio failed');
           await page.evaluate(()=>location.hash='app/cashier');await page.waitForTimeout(100);
-          await page.locator('.menu-grid-pos button').first().click();
+          await page.locator('.pos-menu button').first().click();
           if(!(await page.locator('.bill-total').textContent()).includes('349'))throw new Error('POS cart failed');
           await page.evaluate(()=>location.hash='app/kitchen');await page.waitForTimeout(100);
           await page.locator('.kot').first().click();
-          await page.evaluate(()=>location.hash='app/guest');await page.waitForTimeout(100);
-          await page.locator('.guest-phone article button').first().click();
-          if(!(await page.locator('.op-panel').last().textContent()).includes('1 items'))throw new Error('guest cart failed');
-          await context.close();await browser.close();console.log('Munaffa cinematic platform passed');
+          await page.evaluate(()=>location.hash='app/stock');await page.waitForTimeout(100);
+          if(!(await page.locator('.stock-tabs').isVisible()))throw new Error('stock workflow missing');
+          if(errors.length)throw new Error(errors.join('\n'));
+          await context.close();await browser.close();console.log('Munaffa immersive v2 web passed');
           EOF
           node verify.mjs
   verify-mobile:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 18
     defaults:
       run:
         working-directory: munaffa-platform/apps/mobile
@@ -82,22 +100,28 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Expo project doctor
         run: npx expo-doctor@latest
-      - name: Verify native entry
+      - name: Verify native feature surface
         run: |
           test -f App.jsx
           test -f app.json
           test -f eas.json
-          grep -q 'Munaffa' App.jsx
+          grep -q 'expo-location' package.json
+          grep -q 'expo-camera' package.json
+          grep -q 'CameraView' App.jsx
           grep -q 'createClient' App.jsx
+          grep -q 'Restaurant' App.jsx
+          grep -q 'Owner' App.jsx
   verify-database:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Verify Supabase migrations
+      - name: Verify Supabase core + v2 migration
         run: |
           test -f munaffa-platform/supabase/schema.sql
-          test -f munaffa-platform/supabase/seed.sql
+          test -f munaffa-platform/supabase/migrations/002_consumer_and_identity.sql
           grep -q 'enable row level security' munaffa-platform/supabase/schema.sql
           grep -q 'inventory_movements' munaffa-platform/supabase/schema.sql
           grep -q 'audit_events' munaffa-platform/supabase/schema.sql
-          grep -q 'restaurant_tables' munaffa-platform/supabase/schema.sql
+          grep -q 'reservations' munaffa-platform/supabase/migrations/002_consumer_and_identity.sql
+          grep -q 'service_requests' munaffa-platform/supabase/migrations/002_consumer_and_identity.sql
+          grep -q 'restaurant_subscriptions' munaffa-platform/supabase/migrations/002_consumer_and_identity.sql
