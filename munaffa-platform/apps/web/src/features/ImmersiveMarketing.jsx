@@ -8,6 +8,7 @@ import{ScrollTrigger}from'gsap/ScrollTrigger';
 import Lenis from'lenis';
 import{ArrowRight,BarChart3,ChefHat,ChevronDown,MapPin,Menu,PackageCheck,QrCode,Search,ShieldCheck,Sparkles,X}from'lucide-react';
 import{go}from'../App';
+import'../cinematic.css';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -51,7 +52,6 @@ const routeOrder={
 };
 
 const clamp=v=>Math.max(0,Math.min(1,v));
-const mix=(a,b,t)=>a+(b-a)*t;
 
 function useScrollProgress(){
  const[p,setP]=useState(0);
@@ -89,79 +89,34 @@ function useCinematicMotion(key){
  },[key]);
 }
 
-const vertexShader=`
- uniform float uWarp;
- varying vec2 vUv;
- void main(){
-  vUv=uv;
-  vec3 p=position;
-  float bowl=sin(uv.x*3.1415926)*sin(uv.y*3.1415926);
-  p.z+=bowl*uWarp*1.35;
-  p.x+=(uv.y-.5)*uWarp*.16;
-  p.y+=(uv.x-.5)*uWarp*.07;
-  gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.0);
- }
-`;
-const fragmentShader=`
- uniform sampler2D uMap;
- uniform vec2 uImage;
- uniform float uOpacity;
- uniform float uShade;
- varying vec2 vUv;
- void main(){
-  float planeAspect=1.7777778;
-  float imageAspect=uImage.x/max(uImage.y,1.0);
-  vec2 uv=vUv;
-  if(imageAspect>planeAspect){float s=planeAspect/imageAspect;uv.x=(uv.x-.5)*s+.5;}
-  else{float s=imageAspect/planeAspect;uv.y=(uv.y-.5)*s+.5;}
-  vec4 c=texture2D(uMap,uv);
-  float edge=smoothstep(.9,.18,distance(vUv,vec2(.5)));
-  c.rgb*=mix(.62,1.0,edge);
-  c.rgb*=1.0-uShade;
-  gl_FragColor=vec4(c.rgb,uOpacity);
- }
-`;
+const vertexShader=`uniform float uWarp;varying vec2 vUv;void main(){vUv=uv;vec3 p=position;float bowl=sin(uv.x*3.1415926)*sin(uv.y*3.1415926);p.z+=bowl*uWarp*1.35;p.x+=(uv.y-.5)*uWarp*.16;p.y+=(uv.x-.5)*uWarp*.07;gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.0);}`;
+const fragmentShader=`uniform sampler2D uMap;uniform vec2 uImage;uniform float uOpacity;uniform float uShade;varying vec2 vUv;void main(){float planeAspect=1.7777778;float imageAspect=uImage.x/max(uImage.y,1.0);vec2 uv=vUv;if(imageAspect>planeAspect){float s=planeAspect/imageAspect;uv.x=(uv.x-.5)*s+.5;}else{float s=imageAspect/planeAspect;uv.y=(uv.y-.5)*s+.5;}vec4 c=texture2D(uMap,uv);float edge=smoothstep(.9,.18,distance(vUv,vec2(.5)));c.rgb*=mix(.62,1.0,edge);c.rgb*=1.0-uShade;gl_FragColor=vec4(c.rgb,uOpacity);}`;
 
-function PhotoScene({scene,z,index,total}){
+function PhotoScene({scene,z,index}){
  const texture=useTexture(scene.image);const material=useRef();const{camera}=useThree();
  useEffect(()=>{texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=8;texture.needsUpdate=true},[texture]);
  const uniforms=useMemo(()=>({uMap:{value:texture},uImage:{value:new THREE.Vector2(texture.image?.width||1920,texture.image?.height||1080)},uOpacity:{value:0},uWarp:{value:0},uShade:{value:.04}}),[texture]);
  useFrame((state,dt)=>{
-  const d=camera.position.z-z;
-  const target=clamp(1-Math.abs(d-7)/17);
+  if(!material.current)return;
+  const d=camera.position.z-z;const target=clamp(1-Math.abs(d-7)/17);
   material.current.uniforms.uOpacity.value=THREE.MathUtils.damp(material.current.uniforms.uOpacity.value,target,6,dt);
   material.current.uniforms.uWarp.value=THREE.MathUtils.damp(material.current.uniforms.uWarp.value,Math.max(0,1-Math.abs(d-6)/13)*.75,4,dt);
   material.current.uniforms.uShade.value=THREE.MathUtils.damp(material.current.uniforms.uShade.value,index===0?.02:.06,4,dt);
  });
- return <mesh position={[index%2===0?-.28:.28,0,z]} rotation={[0,index%2===0?.016:-.016,0]} frustumCulled={false}>
-  <planeGeometry args={[18.4,10.35,72,42]}/>
-  <shaderMaterial ref={material} transparent depthWrite={false} side={THREE.DoubleSide} uniforms={uniforms} vertexShader={vertexShader} fragmentShader={fragmentShader}/>
- </mesh>;
+ return <mesh position={[index%2===0?-.28:.28,0,z]} rotation={[0,index%2===0?.016:-.016,0]} frustumCulled={false}><planeGeometry args={[18.4,10.35,72,42]}/><shaderMaterial ref={material} transparent depthWrite={false} side={THREE.DoubleSide} uniforms={uniforms} vertexShader={vertexShader} fragmentShader={fragmentShader}/></mesh>;
 }
 
 function CameraRig({progress,count}){
  const{camera,pointer}=useThree();
  useFrame((state,dt)=>{
-  const distance=16;const max=(count-1)*distance;const z=9-progress*(max+8);
-  const stage=progress*(count-1);const wave=Math.sin(stage*Math.PI*.72);
-  const x=wave*.56+pointer.x*.18;const y=1.05+Math.sin(stage*1.15)*.24-pointer.y*.1;
-  camera.position.x=THREE.MathUtils.damp(camera.position.x,x,4.6,dt);
-  camera.position.y=THREE.MathUtils.damp(camera.position.y,y,4.6,dt);
-  camera.position.z=THREE.MathUtils.damp(camera.position.z,z,5.2,dt);
-  camera.lookAt(x*.12,.12,z-10);
- });
- return null;
+  const distance=16,max=(count-1)*distance,z=9-progress*(max+8),stage=progress*(count-1),wave=Math.sin(stage*Math.PI*.72),x=wave*.56+pointer.x*.18,y=1.05+Math.sin(stage*1.15)*.24-pointer.y*.1;
+  camera.position.x=THREE.MathUtils.damp(camera.position.x,x,4.6,dt);camera.position.y=THREE.MathUtils.damp(camera.position.y,y,4.6,dt);camera.position.z=THREE.MathUtils.damp(camera.position.z,z,5.2,dt);camera.lookAt(x*.12,.12,z-10);
+ });return null;
 }
 
 function PhotoWorld({progress,order}){
  const scenes=order.map(i=>photographs[i]);
- return <Canvas className="cinematic-canvas" camera={{position:[0,1,9],fov:48,near:.1,far:220}} dpr={[1,1.35]} gl={{antialias:true,alpha:false,powerPreference:'high-performance'}}>
-  <color attach="background" args={['#070806']}/>
-  <CameraRig progress={progress} count={scenes.length}/>
-  <Suspense fallback={null}>{scenes.map((scene,i)=><PhotoScene key={`${scene.id}-${i}`} scene={scene} index={i} total={scenes.length} z={-i*16}/>)}</Suspense>
-  <EffectComposer multisampling={0}><Noise opacity={.025}/><Vignette eskil={false} offset={.18} darkness={.72}/></EffectComposer>
-  <Preload all/>
- </Canvas>;
+ return <Canvas className="cinematic-canvas" camera={{position:[0,1,9],fov:48,near:.1,far:220}} dpr={[1,1.35]} gl={{antialias:true,alpha:false,powerPreference:'high-performance'}}><color attach="background" args={['#070806']}/><CameraRig progress={progress} count={scenes.length}/><Suspense fallback={null}>{scenes.map((scene,i)=><PhotoScene key={`${scene.id}-${i}`} scene={scene} index={i} z={-i*16}/>)}</Suspense><EffectComposer multisampling={0}><Noise opacity={.025}/><Vignette eskil={false} offset={.18} darkness={.72}/></EffectComposer><Preload all/></Canvas>;
 }
 
 function SpatialUI({type}){
@@ -181,24 +136,6 @@ function FullMenu({open,onClose,onHover}){
 }
 
 export default function ImmersiveMarketing(){
- const hash=(location.hash||'#home').slice(1).split('/')[0]||'home';const key=pages[hash]?hash:'home';const page=pages[key];
- const progress=useScrollProgress();const[menuOpen,setMenuOpen]=useState(false);const[hover,setHover]=useState(null);useCinematicMotion(key);
- const order=routeOrder[key]||routeOrder.home;
- const active=Math.min(7,Math.floor(progress*8));
- return <div className="marketing cinematic-marketing" style={{'--accent':page.accent}}>
-  <div className="cinematic-world"><PhotoWorld progress={progress} order={order}/><div className="film-grade"/><div className="world-shadow"/></div>
-  <header className="site-nav cinematic-nav"><button className="brand-button" onClick={()=>go('home')}><b>M</b><strong>Munaffa</strong></button><nav><button onClick={()=>go('platform')}>Platform</button><button onClick={()=>go('profit')}>Profit</button><button onClick={()=>go('operations')}>Operations</button><button onClick={()=>go('inventory')}>Inventory</button><button onClick={()=>go('discovery')}>Discover</button><button onClick={()=>go('pricing')}>Pricing</button></nav><div><button className="nav-sign" onClick={()=>go('auth')}>Sign in</button><button className="nav-cta" onClick={()=>go('signup')}>Get started</button><button className="round-menu" onClick={()=>setMenuOpen(true)}><Menu/></button></div></header>
-  <main className="cinematic-story">
-   <section className="cinematic-hero">
-    <div className="hero-copy cinematic-hero-copy"><p className="eyebrow">{page.eyebrow}</p><div className="headline-mask"><h1 className="cinematic-reveal">{page.title}</h1></div><p className="lead">{page.body}</p><div className="hero-actions"><button className="primary" onClick={()=>go('signup')}>Start with Munaffa <ArrowRight/></button><button className="secondary" onClick={()=>go('consumer')}>Explore as a guest <MapPin/></button></div><div className="hero-proof"><span><b>One shared state</b>Guest → kitchen → stock → owner</span><span><b>QR optional</b>Hospitality stays human</span><span><b>Evidence labelled</b>Recorded · calculated · estimated</span></div></div>
-    <div className="scroll-cue"><span>SCROLL THROUGH THE RESTAURANT</span><ChevronDown/></div>
-   </section>
-   {chapterCopy.map((chapter,i)=><section className={`cinematic-section ${i%2?'right':'left'}`} key={chapter.n} data-scene={i}><div className="scene-copy"><p className="scene-index">{chapter.n} / 08</p><p className="eyebrow">{chapter.tag}</p><div className="headline-mask"><h2 className="cinematic-reveal">{chapter.title}</h2></div><p>{chapter.body}</p></div><SpatialUI type={chapter.ui}/></section>)}
-   <section className="cinematic-marquee"><div className="marquee-track">NO FLOATING CUBES · REAL HOSPITALITY · REAL SERVICE FLOWS · REAL COST LOGIC · REAL GUESTS · REAL OPERATIONS · </div></section>
-   <section className="cinematic-final"><p className="eyebrow">FROM FIRST VISIT TO BOTTOM LINE</p><div className="headline-mask"><h2 className="cinematic-reveal">Run the restaurant people love. Understand the business underneath it.</h2></div><p>Use Munaffa as a guest, owner, manager, cashier, waiter, kitchen team, stock operator or platform administrator — all connected to the same restaurant state.</p><div className="hero-actions"><button className="primary" onClick={()=>go('signup')}>Create your workspace <ArrowRight/></button><button className="secondary" onClick={()=>go('consumer')}>Find a place <Search/></button></div></section>
-   <footer className="cinematic-footer"><div><strong>Munaffa</strong><span>The Profit OS for Restaurants</span></div><p>Demo venue names are fictional. Hospitality photography is used as visual reference under the respective Unsplash licenses; no partnership with photographed venues is implied.</p></footer>
-  </main>
-  <button className="cinematic-progress" aria-label="scroll progress"><small>{String(active+1).padStart(2,'0')}</small><span style={{height:`${Math.max(3,progress*100)}%`}}/></button>
-  <FullMenu open={menuOpen} onClose={()=>setMenuOpen(false)} onHover={setHover}/>
- </div>;
+ const hash=(location.hash||'#home').slice(1).split('/')[0]||'home';const key=pages[hash]?hash:'home';const page=pages[key];const progress=useScrollProgress();const[menuOpen,setMenuOpen]=useState(false);const[,setHover]=useState(null);useCinematicMotion(key);const order=routeOrder[key]||routeOrder.home;const active=Math.min(7,Math.floor(progress*8));
+ return <div className="marketing cinematic-marketing" style={{'--accent':page.accent}}><div className="cinematic-world"><PhotoWorld progress={progress} order={order}/><div className="film-grade"/><div className="world-shadow"/></div><header className="site-nav cinematic-nav"><button className="brand-button" onClick={()=>go('home')}><b>M</b><strong>Munaffa</strong></button><nav><button onClick={()=>go('platform')}>Platform</button><button onClick={()=>go('profit')}>Profit</button><button onClick={()=>go('operations')}>Operations</button><button onClick={()=>go('inventory')}>Inventory</button><button onClick={()=>go('discovery')}>Discover</button><button onClick={()=>go('pricing')}>Pricing</button></nav><div><button className="nav-sign" onClick={()=>go('auth')}>Sign in</button><button className="nav-cta" onClick={()=>go('signup')}>Get started</button><button className="round-menu" onClick={()=>setMenuOpen(true)}><Menu/></button></div></header><main className="cinematic-story"><section className="cinematic-hero"><div className="hero-copy cinematic-hero-copy"><p className="eyebrow">{page.eyebrow}</p><div className="headline-mask"><h1 className="cinematic-reveal">{page.title}</h1></div><p className="lead">{page.body}</p><div className="hero-actions"><button className="primary" onClick={()=>go('signup')}>Start with Munaffa <ArrowRight/></button><button className="secondary" onClick={()=>go('consumer')}>Explore as a guest <MapPin/></button></div><div className="hero-proof"><span><b>One shared state</b>Guest → kitchen → stock → owner</span><span><b>QR optional</b>Hospitality stays human</span><span><b>Evidence labelled</b>Recorded · calculated · estimated</span></div></div><div className="scroll-cue"><span>SCROLL THROUGH THE RESTAURANT</span><ChevronDown/></div></section>{chapterCopy.map((chapter,i)=><section className={`cinematic-section ${i%2?'right':'left'}`} key={chapter.n} data-scene={i}><div className="scene-copy"><p className="scene-index">{chapter.n} / 08</p><p className="eyebrow">{chapter.tag}</p><div className="headline-mask"><h2 className="cinematic-reveal">{chapter.title}</h2></div><p>{chapter.body}</p></div><SpatialUI type={chapter.ui}/></section>)}<section className="cinematic-marquee"><div className="marquee-track">NO FLOATING CUBES · REAL HOSPITALITY · REAL SERVICE FLOWS · REAL COST LOGIC · REAL GUESTS · REAL OPERATIONS · </div></section><section className="cinematic-final"><p className="eyebrow">FROM FIRST VISIT TO BOTTOM LINE</p><div className="headline-mask"><h2 className="cinematic-reveal">Run the restaurant people love. Understand the business underneath it.</h2></div><p>Use Munaffa as a guest, owner, manager, cashier, waiter, kitchen team, stock operator or platform administrator — all connected to the same restaurant state.</p><div className="hero-actions"><button className="primary" onClick={()=>go('signup')}>Create your workspace <ArrowRight/></button><button className="secondary" onClick={()=>go('consumer')}>Find a place <Search/></button></div></section><footer className="cinematic-footer"><div><strong>Munaffa</strong><span>The Profit OS for Restaurants</span></div><p>Demo venue names are fictional. Hospitality photography is used as visual reference under the respective Unsplash licenses; no partnership with photographed venues is implied.</p></footer></main><button className="cinematic-progress" aria-label="scroll progress"><small>{String(active+1).padStart(2,'0')}</small><span style={{height:`${Math.max(3,progress*100)}%`}}/></button><FullMenu open={menuOpen} onClose={()=>setMenuOpen(false)} onHover={setHover}/></div>;
 }
