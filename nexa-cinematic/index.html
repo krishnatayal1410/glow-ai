@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#050608" />
+  <meta name="description" content="NEXA — cinematic 3D scroll-driven headphone experience prototype." />
+  <title>NEXA — Sound Beyond Boundaries</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lenis@1.3.11/dist/lenis.min.js"></script>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <canvas id="nexa-canvas" aria-label="Interactive 3D NEXA headphones"></canvas>
+  <div class="grain" aria-hidden="true"></div>
+  <div class="ambient ambient-a" aria-hidden="true"></div>
+  <div class="ambient ambient-b" aria-hidden="true"></div>
+
+  <header class="site-header" id="siteHeader">
+    <a class="brand" href="#hero" aria-label="NEXA home">NEXA</a>
+    <nav class="main-nav" aria-label="Primary navigation">
+      <a href="#products">Products</a>
+      <a href="#technology">Technology</a>
+      <a href="#sustainability">Sustainability</a>
+      <a href="#stories">Stories</a>
+    </nav>
+    <div class="header-actions">
+      <button class="icon-button" id="soundToggle" type="button" aria-pressed="false" aria-label="Toggle ambient sound visualizer">◌</button>
+      <button class="shop-button" id="headerShop" type="button">Shop <span id="cartCount">0</span></button>
+    </div>
+  </header>
+
+  <aside class="chapter-rail" aria-label="Scroll chapters">
+    <span id="chapterIndex">01</span>
+    <div class="rail-line"><i id="railProgress"></i></div>
+    <span id="chapterLabel">HOME</span>
+  </aside>
+
+  <main>
+    <section class="chapter hero" id="hero" data-scene="hero" data-label="HOME">
+      <div class="copy align-left hero-copy">
+        <p class="eyebrow">NEXA / FLAGSHIP AUDIO 2026</p>
+        <h1>Sound<br>Beyond<br>Boundaries.</h1>
+        <p class="lead">Engineered for clarity. Designed for what’s next. A cinematic listening experience that adapts to you.</p>
+        <div class="actions">
+          <a class="button primary" href="#products">Explore NEXA Pro</a>
+          <button class="button ghost" id="filmBtn" type="button"><span class="play">▶</span> Watch the story</button>
+        </div>
+        <div class="hero-specs">
+          <div><strong>50 h</strong><span>Battery</span></div>
+          <div><strong>40 mm</strong><span>Driver</span></div>
+          <div><strong>24-bit</strong><span>Hi-Res</span></div>
+        </div>
+      </div>
+      <div class="scroll-cue"><span>SCROLL TO EXPLORE</span><i></i></div>
+    </section>
+
+    <section class="chapter story" id="story" data-scene="story" data-label="OUR STORY">
+      <div class="copy align-right narrow">
+        <p class="eyebrow">02 / OUR STORY</p>
+        <h2>More Than Audio.<br>A Movement.</h2>
+        <p class="lead">We believe sound has the power to move people, ideas and the world forward. NEXA is built for a generation that hears possibility everywhere.</p>
+        <div class="story-pillars">
+          <article><span>01</span><strong>PEOPLE</strong><p>Designed around real listening habits.</p></article>
+          <article><span>02</span><strong>TECHNOLOGY</strong><p>Intelligence that disappears into the experience.</p></article>
+          <article><span>03</span><strong>PLANET</strong><p>Better materials. Longer product life.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter products" id="products" data-scene="products" data-label="PRODUCTS">
+      <div class="copy align-left medium">
+        <p class="eyebrow">03 / PRODUCTS</p>
+        <h2>A Headphone<br>for Every You.</h2>
+        <p class="lead">Three personalities. One uncompromising standard.</p>
+        <div class="product-tabs" role="tablist" aria-label="NEXA models">
+          <button class="product-tab active" type="button" data-model="pro" role="tab" aria-selected="true"><span class="model-orb graphite"></span><span><strong>NEXA Pro</strong><small>Flagship · ₹24,999</small></span><b>→</b></button>
+          <button class="product-tab" type="button" data-model="go" role="tab" aria-selected="false"><span class="model-orb sand"></span><span><strong>NEXA Go</strong><small>Lightweight · ₹17,999</small></span><b>→</b></button>
+          <button class="product-tab" type="button" data-model="air" role="tab" aria-selected="false"><span class="model-orb blue"></span><span><strong>NEXA Air</strong><small>Everyday · ₹9,999</small></span><b>→</b></button>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter detail" id="detail" data-scene="detail" data-label="PRODUCT DETAIL">
+      <div class="copy align-right medium product-card-shell">
+        <p class="eyebrow">04 / FLAGSHIP</p>
+        <h2 id="productName">NEXA Pro</h2>
+        <p class="lead" id="productTagline">Precision. In Every Detail.</p>
+        <div class="rating"><span>★★★★★</span><small>4.9 · 2,124 reviews</small></div>
+        <div class="price" id="productPrice">₹24,999</div>
+        <div class="color-row" aria-label="Color selector">
+          <span>Color</span>
+          <button class="color-swatch active" data-color="#171a1f" data-name="Midnight Black" style="--sw:#171a1f" aria-label="Midnight black"></button>
+          <button class="color-swatch" data-color="#c8ccd2" data-name="Arctic Silver" style="--sw:#c8ccd2" aria-label="Arctic silver"></button>
+          <button class="color-swatch" data-color="#b59b7a" data-name="Desert Gold" style="--sw:#b59b7a" aria-label="Desert gold"></button>
+          <button class="color-swatch" data-color="#193e5e" data-name="Deep Blue" style="--sw:#193e5e" aria-label="Deep blue"></button>
+        </div>
+        <div class="feature-row">
+          <div><i>◖</i><span>Adaptive ANC</span></div><div><i>◉</i><span>Hi-Res Audio</span></div><div><i>◫</i><span>50 h Battery</span></div><div><i>◇</i><span>Ultra Comfort</span></div>
+        </div>
+        <div class="actions"><button class="button primary add-cart" type="button">Add to Cart</button><a class="button ghost" href="#explode">See Inside</a></div>
+      </div>
+    </section>
+
+    <section class="chapter explode" id="explode" data-scene="explode" data-label="3D EXPERIENCE">
+      <div class="copy align-left medium">
+        <p class="eyebrow">05 / INTERACTIVE 3D</p>
+        <h2>Interact. Explore.<br>Feel the Engineering.</h2>
+        <p class="lead">Scroll deeper and the NEXA Pro opens layer by layer—shell, acoustic chamber, driver, voice coil and magnet array.</p>
+        <div class="component-list" id="componentList">
+          <button type="button" data-part="Outer shell"><span>01</span>Outer shell</button><button type="button" data-part="Acoustic chamber"><span>02</span>Acoustic chamber</button><button type="button" data-part="40 mm driver"><span>03</span>40 mm driver</button><button type="button" data-part="Voice coil"><span>04</span>Voice coil</button><button type="button" data-part="Magnet array"><span>05</span>Magnet array</button>
+        </div>
+        <p class="microcopy" id="partReadout">Scroll to separate the assembly.</p>
+      </div>
+    </section>
+
+    <section class="chapter technology" id="technology" data-scene="technology" data-label="TECHNOLOGY">
+      <div class="copy align-right medium">
+        <p class="eyebrow">06 / TECHNOLOGY</p>
+        <h2>Engineering<br>a Higher Standard.</h2>
+        <p class="lead">Audio engineering and intelligence working together—without getting between you and the music.</p>
+        <div class="tech-accordion">
+          <button type="button" class="tech-item active" data-tech="anc"><span>Adaptive ANC</span><small>Maps noise and reshapes cancellation in real time.</small></button>
+          <button type="button" class="tech-item" data-tech="spatial"><span>Spatial Audio</span><small>A stable 3D field that follows your content.</small></button>
+          <button type="button" class="tech-item" data-tech="ai"><span>AI Sound Optimization</span><small>Learns listening context—not personal conversations.</small></button>
+          <button type="button" class="tech-item" data-tech="battery"><span>Crystal Cell Power</span><small>50 hours playback, 10 minutes gives 5 hours.</small></button>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter sound" id="sound" data-scene="sound" data-label="SOUND EXPERIENCE">
+      <div class="copy align-left medium">
+        <p class="eyebrow">07 / SOUND EXPERIENCE</p>
+        <h2>Every Environment.<br>Perfectly Tuned.</h2>
+        <p class="lead">Switch scenes and watch the acoustic profile, light and motion adapt as one connected system.</p>
+        <div class="environment-grid">
+          <button type="button" class="env active" data-env="city"><b>City</b><span>Blocks noise. Keeps you focused.</span></button><button type="button" class="env" data-env="office"><b>Office</b><span>Clarity for deep work.</span></button><button type="button" class="env" data-env="travel"><b>Travel</b><span>Pure sound, anywhere.</span></button><button type="button" class="env" data-env="home"><b>Home</b><span>Relax. Unwind. Immerse.</span></button>
+        </div>
+        <div class="waveform" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      </div>
+    </section>
+
+    <section class="chapter sustainability" id="sustainability" data-scene="sustainability" data-label="SUSTAINABILITY">
+      <div class="copy align-right medium">
+        <p class="eyebrow">08 / SUSTAINABILITY</p>
+        <h2>A Cleaner Sound<br>for a Brighter Tomorrow.</h2>
+        <p class="lead">A premium product should age well—in your life and on the planet.</p>
+        <div class="impact-row"><div><strong>80%</strong><span>Recycled aluminium in structural parts</span></div><div><strong>50%</strong><span>Lower packaging emissions</span></div><div><strong>1M+</strong><span>Trees supported</span></div></div>
+        <div class="sustain-note">Modular cushions, replaceable battery access and longer software support extend product life.</div>
+      </div>
+    </section>
+
+    <section class="chapter reviews" id="reviews" data-scene="reviews" data-label="REVIEWS">
+      <div class="copy align-left medium">
+        <p class="eyebrow">09 / REVIEWS</p><h2>Loved by Listeners.<br>Everywhere.</h2>
+        <div class="review-stack"><blockquote><span>“The best headphones I’ve owned.”</span><footer><b>Aarav Mehta</b><i>★★★★★</i></footer></blockquote><blockquote><span>“The comfort is what surprised me most.”</span><footer><b>Priya Sharma</b><i>★★★★★</i></footer></blockquote><blockquote><span>“My work-and-travel pair now.”</span><footer><b>Rehan Verma</b><i>★★★★★</i></footer></blockquote></div>
+      </div>
+    </section>
+
+    <section class="chapter lifestyle" id="lifestyle" data-scene="life" data-label="IN THE WILD">
+      <div class="copy align-right medium"><p class="eyebrow">10 / IN THE WILD</p><h2>Built for<br>Real Life.</h2><p class="lead">Work. Travel. Create. Relax. NEXA goes where you do.</p><div class="lifestyle-grid"><article><span>WORK</span><strong>Quiet when the room isn’t.</strong></article><article><span>TRAVEL</span><strong>Long-haul comfort.</strong></article><article><span>CREATE</span><strong>Hear every layer.</strong></article><article><span>EVERYDAY</span><strong>Designed to disappear.</strong></article></div></div>
+    </section>
+
+    <section class="chapter stories" id="stories" data-scene="stories" data-label="STORIES">
+      <div class="copy align-left wide"><p class="eyebrow">11 / STORIES</p><h2>Stories That Inspire<br>a Louder Tomorrow.</h2><div class="story-grid"><article><small>INNOVATION · 8 MIN</small><h3>The Future of Personal Audio</h3><p>Why the next leap in headphones is contextual, not louder.</p><a href="#technology">Read story →</a></article><article><small>SUSTAINABILITY · 6 MIN</small><h3>Designing for a Quieter Planet</h3><p>How durability changes the footprint of electronics.</p><a href="#sustainability">Read story →</a></article><article><small>PEOPLE · 5 MIN</small><h3>Behind the Design</h3><p>Meet the industrial designers shaping NEXA Pro.</p><a href="#story">Read story →</a></article></div></div>
+    </section>
+
+    <section class="chapter support" id="support" data-scene="support" data-label="SUPPORT">
+      <div class="copy align-right medium"><p class="eyebrow">12 / SUPPORT</p><h2>We’re Here<br>for You.</h2><p class="lead">Get the help you need, when you need it.</p><label class="support-search"><span>⌕</span><input id="supportInput" type="search" placeholder="Search setup, pairing, charging, warranty…" /></label><div class="support-links" id="supportLinks"><button type="button" data-keywords="setup pair pairing bluetooth">Getting Started</button><button type="button" data-keywords="noise anc audio sound troubleshooting">Troubleshooting</button><button type="button" data-keywords="warranty coverage repair replace">Warranty</button><button type="button" data-keywords="return refund exchange">Returns</button></div><p class="support-result" id="supportResult" aria-live="polite">Popular topics are ready.</p></div>
+    </section>
+
+    <section class="chapter newsletter" id="newsletter" data-scene="newsletter" data-label="NEWSLETTER">
+      <div class="copy centered narrow"><p class="eyebrow">13 / STAY AHEAD</p><h2>Be the First<br>to Hear What’s Next.</h2><p class="lead">New products. Exclusive stories. Special offers. Straight to your inbox.</p><form class="newsletter-form" id="newsletterForm" novalidate><input id="emailInput" type="email" placeholder="Email address" autocomplete="email" required /><button type="submit">→</button></form><p id="newsletterStatus" class="form-status" aria-live="polite"></p></div>
+    </section>
+
+    <footer class="chapter final" id="footer" data-scene="footer" data-label="NEXA">
+      <div class="footer-inner"><div><div class="footer-brand">NEXA</div><p>Sound Beyond Boundaries.</p></div><div class="footer-links"><a href="#products">Products</a><a href="#technology">Technology</a><a href="#sustainability">Sustainability</a><a href="#support">Support</a><a href="#story">About</a><a href="#stories">Stories</a></div><div><p>India (INR)</p><p>© 2026 NEXA Prototype</p></div></div>
+    </footer>
+  </main>
+
+  <div class="part-tooltip" id="partTooltip" role="status" aria-live="polite"></div>
+  <div class="cart-backdrop" id="cartBackdrop" hidden></div>
+  <aside class="cart-drawer" id="cartDrawer" aria-label="Shopping cart" aria-hidden="true"><div class="cart-head"><span>Your Cart</span><button type="button" id="cartClose" aria-label="Close cart">×</button></div><div class="cart-product"><div class="cart-thumb"><span></span></div><div><strong id="cartProductName">NEXA Pro</strong><small id="cartColorName">Midnight Black</small></div><strong id="cartPrice">₹24,999</strong></div><div class="cart-summary"><span>Shipping</span><b>Free</b><span>Tax (GST)</span><b>Included</b><span>Total</span><strong id="cartTotal">₹24,999</strong></div><button class="button primary full" type="button" id="checkoutBtn">Prototype Checkout</button><p class="cart-note" id="cartNote">Secure checkout demo · no payment is processed.</p></aside>
+  <div class="film-modal" id="filmModal" aria-hidden="true"><div class="film-panel"><button type="button" id="filmClose" aria-label="Close story">×</button><div class="film-visual"><div class="film-ring"></div><span>NEXA</span></div><h3>Sound Beyond Boundaries</h3><p>A 30-second brand-film placeholder using the same visual language as the scroll experience. In production this slot can hold a real film or frame sequence.</p></div></div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
