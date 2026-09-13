@@ -32,7 +32,6 @@ jobs:
       - name: Start static server
         run: |
           python3 -m http.server 4173 --directory nexa-cinematic > /tmp/nexa-server.log 2>&1 &
-          echo $! > /tmp/nexa-server.pid
           sleep 2
       - name: Browser interaction smoke test
         run: |
@@ -43,8 +42,10 @@ jobs:
           const errors = [];
           page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
           page.on('console', m => { if (m.type() === 'error') errors.push(`console: ${m.text()}`); });
-          await page.goto('http://127.0.0.1:4173', { waitUntil: 'networkidle', timeout: 60000 });
+          await page.goto('http://127.0.0.1:4173', { waitUntil: 'domcontentloaded', timeout: 30000 });
           await page.waitForSelector('#nexa-canvas');
+          await page.waitForSelector('[data-model="go"]');
+          await page.waitForTimeout(1800);
           const canvasSize = await page.locator('#nexa-canvas').evaluate(el => ({w:el.width,h:el.height}));
           if (canvasSize.w < 300 || canvasSize.h < 300) throw new Error('WebGL canvas not sized');
           await page.locator('[data-model="go"]').click();
@@ -55,7 +56,7 @@ jobs:
           if (!(await page.locator('#cartDrawer').evaluate(el => el.classList.contains('open')))) throw new Error('Cart drawer failed');
           await page.locator('#cartClose').click();
           await page.locator('#support').scrollIntoViewIfNeeded();
-          await page.waitForTimeout(400);
+          await page.waitForTimeout(300);
           await page.locator('#supportInput').fill('warranty');
           if (!((await page.locator('#supportResult').textContent()) || '').includes('matched')) throw new Error('Support search failed');
           await page.locator('#newsletter').scrollIntoViewIfNeeded();
@@ -63,11 +64,11 @@ jobs:
           await page.locator('#newsletterForm button').click();
           if (!((await page.locator('#newsletterStatus').textContent()) || '').includes('early-access')) throw new Error('Newsletter validation failed');
           await page.locator('#explode').scrollIntoViewIfNeeded();
-          await page.waitForTimeout(500);
+          await page.waitForTimeout(350);
           await page.locator('#componentList button').first().click();
           if (!((await page.locator('#partReadout').textContent()) || '').includes('Focused')) throw new Error('3D component interaction failed');
-          await page.screenshot({ path: '/tmp/nexa-prototype.png', fullPage: false });
           if (errors.length) throw new Error(errors.join('\n'));
+          await page.screenshot({ path: '/tmp/nexa-prototype.png', fullPage: false });
           await browser.close();
           console.log('NEXA browser smoke test passed');
           EOF
