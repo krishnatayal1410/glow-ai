@@ -1,0 +1,9 @@
+{
+  "name": "munaffa-platform",
+  "private": true,
+  "scripts": {
+    "web:dev": "npm --prefix apps/web run dev",
+    "web:build": "npm --prefix apps/web run build",
+    "mobile:start": "npm --prefix apps/mobile run start"
+  }
+}
