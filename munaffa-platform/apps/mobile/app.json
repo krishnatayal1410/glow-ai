@@ -5,7 +5,6 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {"supportsTablet": true, "bundleIdentifier": "com.munaffa.app"},
     "android": {"package": "com.munaffa.app", "adaptiveIcon": {"backgroundColor": "#07130d"}},
     "scheme": "munaffa",
