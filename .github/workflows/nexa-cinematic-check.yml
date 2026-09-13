@@ -1,0 +1,74 @@
+name: NEXA Cinematic Prototype Check
+
+on:
+  push:
+    branches: [nexa-cinematic-prototype]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: JavaScript syntax check
+        run: node --check nexa-cinematic/app.js
+      - name: Verify prototype structure
+        run: |
+          test -f nexa-cinematic/index.html
+          test -f nexa-cinematic/styles.css
+          grep -q 'data-scene="explode"' nexa-cinematic/index.html
+          grep -q 'NEXA Pro' nexa-cinematic/index.html
+          grep -q 'ScrollTrigger' nexa-cinematic/app.js
+          grep -q 'Lenis' nexa-cinematic/app.js
+      - name: Install Chromium test runtime
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm i playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Start static server
+        run: |
+          python3 -m http.server 4173 --directory nexa-cinematic > /tmp/nexa-server.log 2>&1 &
+          echo $! > /tmp/nexa-server.pid
+          sleep 2
+      - name: Browser interaction smoke test
+        run: |
+          cat > /tmp/nexa-test.mjs <<'EOF'
+          import { chromium } from 'playwright';
+          const browser = await chromium.launch({ headless: true });
+          const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+          const errors = [];
+          page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
+          page.on('console', m => { if (m.type() === 'error') errors.push(`console: ${m.text()}`); });
+          await page.goto('http://127.0.0.1:4173', { waitUntil: 'networkidle', timeout: 60000 });
+          await page.waitForSelector('#nexa-canvas');
+          const canvasSize = await page.locator('#nexa-canvas').evaluate(el => ({w:el.width,h:el.height}));
+          if (canvasSize.w < 300 || canvasSize.h < 300) throw new Error('WebGL canvas not sized');
+          await page.locator('[data-model="go"]').click();
+          if ((await page.locator('#productName').textContent())?.trim() !== 'NEXA Go') throw new Error('Model selector failed');
+          await page.locator('.color-swatch[data-name="Deep Blue"]').click();
+          await page.locator('.add-cart').click();
+          if ((await page.locator('#cartCount').textContent())?.trim() !== '1') throw new Error('Cart count failed');
+          if (!(await page.locator('#cartDrawer').evaluate(el => el.classList.contains('open')))) throw new Error('Cart drawer failed');
+          await page.locator('#cartClose').click();
+          await page.locator('#support').scrollIntoViewIfNeeded();
+          await page.waitForTimeout(400);
+          await page.locator('#supportInput').fill('warranty');
+          if (!((await page.locator('#supportResult').textContent()) || '').includes('matched')) throw new Error('Support search failed');
+          await page.locator('#newsletter').scrollIntoViewIfNeeded();
+          await page.locator('#emailInput').fill('test@example.com');
+          await page.locator('#newsletterForm button').click();
+          if (!((await page.locator('#newsletterStatus').textContent()) || '').includes('early-access')) throw new Error('Newsletter validation failed');
+          await page.locator('#explode').scrollIntoViewIfNeeded();
+          await page.waitForTimeout(500);
+          await page.locator('#componentList button').first().click();
+          if (!((await page.locator('#partReadout').textContent()) || '').includes('Focused')) throw new Error('3D component interaction failed');
+          await page.screenshot({ path: '/tmp/nexa-prototype.png', fullPage: false });
+          if (errors.length) throw new Error(errors.join('\n'));
+          await browser.close();
+          console.log('NEXA browser smoke test passed');
+          EOF
+          node /tmp/nexa-test.mjs
