@@ -36,7 +36,7 @@ jobs:
           sleep 2
       - name: Browser interaction smoke test
         run: |
-          cat > /tmp/nexa-test.mjs <<'EOF'
+          cat > nexa-test.mjs <<'EOF'
           import { chromium } from 'playwright';
           const browser = await chromium.launch({ headless: true });
           const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -71,4 +71,4 @@ jobs:
           await browser.close();
           console.log('NEXA browser smoke test passed');
           EOF
-          node /tmp/nexa-test.mjs
+          node nexa-test.mjs
