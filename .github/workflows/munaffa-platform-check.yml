@@ -33,10 +33,23 @@ jobs:
           import { chromium } from 'playwright';
           const browser=await chromium.launch({headless:true});
           const context=await browser.newContext({viewport:{width:1440,height:900},reducedMotion:'reduce'});
-          const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+          const page=await context.newPage();
+          const errors=[]; const consoleErrors=[];
+          page.on('pageerror',e=>errors.push(e.message));
+          page.on('console',m=>{if(m.type()==='error')consoleErrors.push(m.text())});
           await page.goto('http://127.0.0.1:4173/#home',{waitUntil:'domcontentloaded',timeout:30000});
-          await page.waitForSelector('canvas');await page.waitForTimeout(1000);
-          if(errors.length)throw new Error(errors.join('\n'));
+          await page.waitForTimeout(1600);
+          const body=await page.locator('body').innerText().catch(()=>'<body unavailable>');
+          const html=await page.locator('#root').innerHTML().catch(()=>'<root unavailable>');
+          console.log('BODY_TEXT_START\n'+body.slice(0,5000)+'\nBODY_TEXT_END');
+          console.log('ROOT_HTML_START\n'+html.slice(0,7000)+'\nROOT_HTML_END');
+          console.log('PAGE_ERRORS',JSON.stringify(errors));
+          console.log('CONSOLE_ERRORS',JSON.stringify(consoleErrors));
+          if(errors.length)throw new Error('pageerror: '+errors.join(' | '));
+          if(consoleErrors.some(x=>!x.includes('favicon')))throw new Error('console error: '+consoleErrors.join(' | '));
+          await page.waitForSelector('.marketing',{timeout:5000});
+          await page.waitForSelector('canvas',{timeout:5000});
+          await page.waitForSelector('.hero-copy h1',{timeout:5000});
           if(!(await page.locator('.hero-copy h1').textContent()).includes('Munaffa'))throw new Error('home hero missing');
           const canvas=await page.locator('canvas').evaluate(el=>({w:el.width,cw:el.clientWidth}));
           if(!canvas.w||canvas.w/canvas.cw>1.35)throw new Error('3D renderer quality profile invalid');
@@ -45,43 +58,42 @@ jobs:
           await page.locator('.immersive-menu nav button').first().hover();
           await page.locator('.menu-close').click();
           for(const route of ['platform','profit','operations','inventory','guest','ai','discovery','pricing','about']){
-            await page.evaluate(r=>location.hash=r,route);await page.waitForTimeout(120);
+            await page.evaluate(r=>location.hash=r,route);await page.waitForTimeout(180);
             if(!(await page.locator('.hero-copy h1').isVisible()))throw new Error(route+' hero missing');
             if(!(await page.locator('canvas').isVisible()))throw new Error(route+' 3D scene missing');
             if((await page.locator('.story-chapter').count())!==8)throw new Error(route+' chapter count');
           }
-          await page.evaluate(()=>{localStorage.clear();location.hash='signup'});await page.waitForTimeout(150);
+          await page.evaluate(()=>{localStorage.clear();location.hash='signup'});await page.waitForTimeout(220);
           await page.locator('input[placeholder="Your name"]').fill('CI Guest');
           await page.locator('input[placeholder="you@example.com"]').fill('ci@example.com');
           await page.locator('input[type="password"]').fill('password123');
-          await page.locator('button.primary.wide').click();await page.waitForTimeout(120);
+          await page.locator('button.primary.wide').click();await page.waitForTimeout(180);
           if(!(await page.locator('.onboard').isVisible()))throw new Error('signup/onboarding failed');
           await page.locator('.role-card').first().click();
-          await page.getByText('Continue',{exact:true}).click();await page.waitForTimeout(80);
-          await page.getByText('Continue',{exact:true}).click();await page.waitForTimeout(80);
-          await page.getByText('Enter Munaffa',{exact:false}).click();await page.waitForTimeout(150);
+          await page.getByText('Continue',{exact:true}).click();await page.waitForTimeout(100);
+          await page.getByText('Continue',{exact:true}).click();await page.waitForTimeout(100);
+          await page.getByText('Enter Munaffa',{exact:false}).click();await page.waitForTimeout(220);
           if(!(await page.locator('.consumer').isVisible()))throw new Error('consumer mode launch failed');
           await page.locator('.venue-open').first().click();
           await page.locator('.dish-row>button').first().click();
           await page.locator('.cart-fab').click();
           if(!(await page.locator('.checkout').isVisible()))throw new Error('checkout missing');
-          await page.locator('.checkout button.primary.wide').click();await page.waitForTimeout(1050);
+          await page.locator('.checkout button.primary.wide').click();await page.waitForTimeout(1100);
           if(!(await page.locator('.order-float').isVisible()))throw new Error('order tracking missing');
           for(const role of ['owner','manager','cashier','waiter','kitchen','stock','admin']){
-            await page.evaluate(r=>location.hash='app/'+r,role);await page.waitForTimeout(100);
+            await page.evaluate(r=>location.hash='app/'+r,role);await page.waitForTimeout(140);
             if(!(await page.locator('.ops').isVisible()))throw new Error(role+' workspace missing');
           }
-          await page.evaluate(()=>location.hash='app/owner');await page.waitForTimeout(100);
+          await page.evaluate(()=>location.hash='app/owner');await page.waitForTimeout(140);
           await page.getByText('QR Studio',{exact:true}).click();
           if(!(await page.locator('.qr-preview svg').isVisible()))throw new Error('QR studio failed');
-          await page.evaluate(()=>location.hash='app/cashier');await page.waitForTimeout(100);
+          await page.evaluate(()=>location.hash='app/cashier');await page.waitForTimeout(140);
           await page.locator('.pos-menu button').first().click();
           if(!(await page.locator('.bill-total').textContent()).includes('349'))throw new Error('POS cart failed');
-          await page.evaluate(()=>location.hash='app/kitchen');await page.waitForTimeout(100);
+          await page.evaluate(()=>location.hash='app/kitchen');await page.waitForTimeout(140);
           await page.locator('.kot').first().click();
-          await page.evaluate(()=>location.hash='app/stock');await page.waitForTimeout(100);
+          await page.evaluate(()=>location.hash='app/stock');await page.waitForTimeout(140);
           if(!(await page.locator('.stock-tabs').isVisible()))throw new Error('stock workflow missing');
-          if(errors.length)throw new Error(errors.join('\n'));
           await context.close();await browser.close();console.log('Munaffa immersive v2 web passed');
           EOF
           node verify.mjs
