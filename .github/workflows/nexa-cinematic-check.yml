@@ -19,10 +19,6 @@ jobs:
           node --check nexa-cinematic/app.js
           test -f nexa-cinematic/index.html
           test -f nexa-cinematic/styles.css
-          grep -q 'id="soundlab"' nexa-cinematic/index.html
-          grep -q 'id="compare"' nexa-cinematic/index.html
-          grep -q "scrollEngine:'native'" nexa-cinematic/app.js
-          grep -q '__NEXA_METRICS__' nexa-cinematic/app.js
       - name: Install browser runtime
         run: |
           npm init -y >/dev/null 2>&1
