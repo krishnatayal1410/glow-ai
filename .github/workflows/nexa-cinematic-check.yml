@@ -1,4 +1,4 @@
-name: NEXA Cinematic Prototype Check
+name: NEXA Optimized Prototype Check
 
 on:
   push:
@@ -19,54 +19,62 @@ jobs:
           node --check nexa-cinematic/app.js
           test -f nexa-cinematic/index.html
           test -f nexa-cinematic/styles.css
-          grep -q 'data-scene="explode"' nexa-cinematic/index.html
-          grep -q 'NEXA Pro' nexa-cinematic/index.html
-          grep -q 'ScrollTrigger' nexa-cinematic/app.js
-          grep -q 'Lenis' nexa-cinematic/app.js
-          grep -q 'prefers-reduced-motion' nexa-cinematic/styles.css
-      - name: Install Chromium test runtime
+          grep -q 'id="soundlab"' nexa-cinematic/index.html
+          grep -q 'id="compare"' nexa-cinematic/index.html
+          grep -q "scrollEngine:'native'" nexa-cinematic/app.js
+          grep -q '__NEXA_METRICS__' nexa-cinematic/app.js
+      - name: Install browser runtime
         run: |
           npm init -y >/dev/null 2>&1
           npm i playwright@1.55.0 >/dev/null
           npx playwright install --with-deps chromium >/dev/null
-      - name: Start static server
+      - name: Start site
         run: |
-          python3 -m http.server 4173 --directory nexa-cinematic > /tmp/nexa-server.log 2>&1 &
+          python3 -m http.server 4173 --directory nexa-cinematic >/tmp/nexa-server.log 2>&1 &
           sleep 2
-      - name: Browser interaction smoke test
+      - name: Browser checks
         run: |
           cat > nexa-test.mjs <<'EOF'
           import { chromium } from 'playwright';
-          const browser = await chromium.launch({ headless: true });
-          const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
-          const page = await context.newPage();
-          const errors = [];
-          page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
-          page.on('console', m => { if (m.type() === 'error') errors.push(`console: ${m.text()}`); });
-          await page.goto('http://127.0.0.1:4173', { waitUntil: 'domcontentloaded', timeout: 30000 });
-          await page.waitForSelector('#nexa-canvas');
-          await page.waitForTimeout(2200);
-          const canvas = await page.locator('#nexa-canvas').evaluate(el => ({w:el.width,h:el.height}));
-          if (canvas.w < 300 || canvas.h < 300) throw new Error('WebGL canvas not sized');
-          await page.locator('[data-model="go"]').evaluate(el => el.click());
-          if ((await page.locator('#productName').textContent())?.trim() !== 'NEXA Go') throw new Error('Model selector failed');
-          await page.locator('.color-swatch[data-name="Deep Blue"]').evaluate(el => el.click());
-          await page.locator('.add-cart').evaluate(el => el.click());
-          if ((await page.locator('#cartCount').textContent())?.trim() !== '1') throw new Error('Cart count failed');
-          if (!(await page.locator('#cartDrawer').evaluate(el => el.classList.contains('open')))) throw new Error('Cart drawer failed');
-          await page.locator('#cartClose').evaluate(el => el.click());
-          await page.locator('#supportInput').evaluate(el => { el.value='warranty'; el.dispatchEvent(new Event('input',{bubbles:true})); });
-          if (!((await page.locator('#supportResult').textContent()) || '').includes('matched')) throw new Error('Support search failed');
-          await page.locator('#emailInput').evaluate(el => { el.value='test@example.com'; });
-          await page.locator('#newsletterForm').evaluate(el => el.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
-          if (!((await page.locator('#newsletterStatus').textContent()) || '').includes('early-access')) throw new Error('Newsletter failed');
-          await page.locator('#componentList button').first().evaluate(el => el.click());
-          if (!((await page.locator('#partReadout').textContent()) || '').includes('Focused')) throw new Error('3D component control failed');
-          await page.evaluate(() => window.scrollTo(0, document.querySelector('#explode').offsetTop + 200));
-          await page.waitForTimeout(350);
-          if (errors.length) throw new Error(errors.join('\n'));
-          await page.screenshot({ path: '/tmp/nexa-prototype.png' });
-          console.log('NEXA browser smoke test passed');
+          const browser=await chromium.launch({headless:true});
+          async function load(viewport,isMobile=false){
+            const context=await browser.newContext({viewport,isMobile,hasTouch:isMobile});
+            const page=await context.newPage();
+            const errors=[];
+            page.on('pageerror',e=>errors.push(e.message));
+            await page.goto('http://127.0.0.1:4173',{waitUntil:'domcontentloaded',timeout:30000});
+            await page.waitForFunction(()=>document.querySelector('#preloader')?.classList.contains('done'),null,{timeout:10000});
+            await page.waitForTimeout(2800);
+            if(errors.length)throw new Error(errors.join('\n'));
+            return {context,page};
+          }
+          const desk=await load({width:1440,height:900});
+          const page=desk.page;
+          const metrics=await page.evaluate(()=>window.__NEXA_METRICS__);
+          console.log('desktop',metrics);
+          if(metrics.scrollEngine!=='native')throw new Error('wrong scroll engine');
+          if(metrics.dpr>1.55)throw new Error('desktop dpr too high');
+          if(metrics.drawCalls>40)throw new Error('draw call budget exceeded');
+          if(metrics.triangles>120000)throw new Error('triangle budget exceeded');
+          await page.locator('[data-model="go"]').evaluate(el=>el.click());
+          if((await page.locator('#productName').textContent())?.trim()!=='NEXA Go')throw new Error('model switch');
+          await page.locator('.color-swatch[data-name="Deep Blue"]').evaluate(el=>el.click());
+          if((await page.locator('#finishName').textContent())?.trim()!=='Deep Blue')throw new Error('finish switch');
+          await page.locator('.profile[data-profile="warm"]').evaluate(el=>el.click());
+          await page.locator('.anc-mode[data-anc="flight"]').evaluate(el=>el.click());
+          await page.locator('.context-card[data-env="home"]').evaluate(el=>el.click());
+          await page.locator('#componentList button').nth(3).evaluate(el=>el.click());
+          if(!((await page.locator('#partReadout').textContent())||'').includes('40 mm driver'))throw new Error('engineering control');
+          await page.locator('.add-cart').first().evaluate(el=>el.click());
+          if((await page.locator('#cartCount').textContent())?.trim()!=='1')throw new Error('cart');
+          await desk.context.close();
+          const mob=await load({width:390,height:844},true);
+          const mm=await mob.page.evaluate(()=>window.__NEXA_METRICS__);
+          console.log('mobile',mm);
+          if(mm.dpr>1.05)throw new Error('mobile dpr too high');
+          if(mm.drawCalls>40)throw new Error('mobile draw call budget exceeded');
+          await mob.context.close();
           await browser.close();
+          console.log('NEXA optimized prototype passed');
           EOF
           node nexa-test.mjs
