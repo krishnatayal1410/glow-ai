@@ -1,0 +1,11 @@
+{
+  "name": "munaffa",
+  "private": true,
+  "version": "0.0.1",
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "npm --workspace @munaffa/web run dev",
+    "build": "npm --workspace @munaffa/web run build",
+    "test:engine": "node packages/core/test-engine.mjs"
+  }
+}
