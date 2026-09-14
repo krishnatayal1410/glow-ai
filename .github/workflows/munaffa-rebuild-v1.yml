@@ -27,11 +27,14 @@ jobs:
         run: npm run test:engine
       - name: Build web app
         run: npm run build
+      - name: Validate Expo mobile project
+        run: cd apps/mobile && npx expo-doctor@latest
       - name: Verify Supabase RLS schema
         run: |
           grep -qi "row level security" supabase/schema.sql
           grep -q "restaurant_events" supabase/schema.sql
           grep -q "stock_movements" supabase/schema.sql
+          grep -q "public.profiles" supabase/migrations/002_profiles.sql
       - name: Install browser test runtime
         run: |
           npm install --no-save playwright
@@ -40,7 +43,7 @@ jobs:
         run: |
           npm --workspace @munaffa/web run preview -- --host 127.0.0.1 --port 4173 > /tmp/munaffa-rebuild.log 2>&1 &
           for i in {1..30}; do curl -fsS http://127.0.0.1:4173 >/dev/null && break; sleep 1; done
-      - name: Test unique cinematic routes and shared Table 12 state
+      - name: Test cinematic routes signup discovery and shared Table 12 state
         run: |
           node --input-type=module <<'NODE'
           import { chromium } from 'playwright';
@@ -65,8 +68,21 @@ jobs:
             const text=(await page.locator('.cine-intro h1').innerText()).replace(/\s+/g,' ').trim();
             if(!text.includes(title))throw new Error(`Wrong ${route} story: ${text}`);
           }
+          await page.goto(`${base}/#auth`,{waitUntil:'domcontentloaded'});
+          await page.evaluate(()=>localStorage.clear());
+          await page.getByLabel('Name').fill('Demo Guest');
+          await page.getByLabel('Email').fill('demo@example.com');
+          await page.getByLabel('Password').fill('munaffa123');
+          await page.getByRole('button',{name:'Create account',exact:true}).last().click();
+          await page.waitForSelector('.onboarding');
+          await page.getByRole('button',{name:/I’m here to discover/}).click();
+          await page.getByRole('button',{name:/Open my Munaffa/}).click();
+          await page.waitForSelector('.discover-shell');
+          if(await page.locator('.venue-card').count()<4)throw new Error('Discovery venues missing');
+          await page.getByRole('button',{name:/The Spice Room/}).click();
+          await page.waitForSelector('.venue-page');
           await page.goto(`${base}/#app/guest`,{waitUntil:'domcontentloaded'});
-          await page.evaluate(()=>localStorage.clear());await page.reload();
+          await page.evaluate(()=>localStorage.removeItem('munaffa:rebuild:v1'));await page.reload();
           await page.getByRole('button',{name:'Place Table 12 order'}).click();
           await page.goto(`${base}/#app/waiter`);await page.getByRole('button',{name:'Accept order'}).click();
           await page.goto(`${base}/#app/kitchen`);
