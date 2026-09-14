@@ -1,0 +1,77 @@
+name: Munaffa Cinematic V5 Check
+on:
+  push:
+    branches: [munaffa-cinematic-v5]
+  workflow_dispatch:
+jobs:
+  verify-web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: munaffa-platform/apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Enforce visual constraints
+        run: |
+          ! grep -R "backdrop-filter\|filter:blur\|PhotoScene\|boxGeometry\|sphereGeometry\|cylinderGeometry" src/v5
+          grep -R "SketchWorld" src/v5/PublicSite.jsx
+          grep -R "84aed47cfbb4470087c6cf92868a020a" src/v5/worlds.js
+          grep -R "7731809de26e41b0828f236f39c95f7c" src/v5/worlds.js
+          grep -R "07c17186dce6472ea2ff2b93d84aea6d" src/v5/worlds.js
+      - name: Install
+        run: npm install --no-audit --no-fund
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+      - name: Build
+        run: npm run build
+      - name: Install browser
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start preview
+        run: |
+          npm run preview -- --port 4173 > /tmp/munaffa-v5.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:4173 >/dev/null && break; sleep 1; done
+      - name: Test cinematic worlds and product demo
+        run: |
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1440,height:900}});
+          const errors=[];page.on('pageerror',e=>errors.push(e.message));
+          const routes={home:'A restaurant is a living system.',restaurants:'Built around the dining room',cafes:'Fast service without losing',hotels:'One profit layer across hotel F&B',profit:'Know where every rupee',operations:'The restaurant should feel alive',inventory:'From delivery door to plated dish',discover:'Find hospitality without breaking',pricing:'Software should earn its seat'};
+          for(const [r,text] of Object.entries(routes)){
+            await page.goto(`http://127.0.0.1:4173/#${r}`,{waitUntil:'domcontentloaded'});
+            await page.waitForSelector('.m5-site');
+            const body=await page.locator('body').innerText();
+            if(!body.includes(text)) throw new Error(`Missing ${r} headline`);
+            if(await page.locator('.m5-world iframe').count()<1) throw new Error(`No 3D world mounted for ${r}`);
+          }
+          await page.goto('http://127.0.0.1:4173/app.html#app/owner',{waitUntil:'domcontentloaded'});await page.waitForSelector('.op-shell');
+          for(const role of ['manager','cashier','waiter','kitchen','stock']){await page.goto(`http://127.0.0.1:4173/app.html#app/${role}`,{waitUntil:'domcontentloaded'});await page.waitForSelector('.op-shell')}
+          if(errors.length) throw new Error(errors.join('\n'));
+          await browser.close();
+          NODE
+  verify-mobile:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: munaffa-platform/apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install --no-audit --no-fund
+      - run: npx expo-doctor@latest
+  verify-database:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Supabase assets
+        run: |
+          test -f munaffa-platform/supabase/schema.sql
+          grep -qi "row level security" munaffa-platform/supabase/schema.sql
