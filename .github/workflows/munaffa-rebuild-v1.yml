@@ -16,7 +16,11 @@ jobs:
           node-version: 24
       - name: Enforce rejected-visual exclusions
         run: |
-          ! grep -R "boxGeometry\|sphereGeometry\|cylinderGeometry\|backdrop-filter\|filter: *blur" apps/web/src || (echo 'Rejected visual primitive or blur reintroduced' && exit 1)
+          ! grep -R "boxGeometry\|sphereGeometry\|cylinderGeometry\|backdrop-filter\|filter: *blur\|MeshReflectorMaterial\|PhotoScene" apps/web/src || (echo 'Rejected visual language reintroduced' && exit 1)
+          grep -q "cdn.3dassets.dev/assets/16545" apps/web/src/cinematic/assets.js
+          grep -q "cdn.3dassets.dev/assets/22245" apps/web/src/cinematic/assets.js
+          grep -q "cdn.3dassets.dev/assets/25950" apps/web/src/cinematic/assets.js
+          grep -q "cdn.3dassets.dev/assets/16228" apps/web/src/cinematic/assets.js
       - name: Install workspace
         run: npm install --no-audit --no-fund
       - name: Test connected event engine
@@ -28,3 +32,57 @@ jobs:
           grep -qi "row level security" supabase/schema.sql
           grep -q "restaurant_events" supabase/schema.sql
           grep -q "stock_movements" supabase/schema.sql
+      - name: Install browser test runtime
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start production preview
+        run: |
+          npm --workspace @munaffa/web run preview -- --host 127.0.0.1 --port 4173 > /tmp/munaffa-rebuild.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:4173 >/dev/null && break; sleep 1; done
+      - name: Test unique cinematic routes and shared Table 12 state
+        run: |
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1440,height:900}});
+          const errors=[];page.on('pageerror',e=>errors.push(e.message));
+          const base='http://127.0.0.1:4173';
+          const routes={
+            story:'One order. One restaurant. One truth.',
+            restaurants:'Built around the dining room, not around software.',
+            cafes:'Speed without losing the guest.',
+            'hotel-fb':'One operating truth across every outlet.',
+            qsr:'Throughput without operational blindness.',
+            operations:'Service and kitchen move as one.',
+            inventory:'Stock should move for a reason.',
+            profit:'Know where every rupee goes.'
+          };
+          for(const [route,title] of Object.entries(routes)){
+            await page.goto(`${base}/#${route}`,{waitUntil:'domcontentloaded'});
+            await page.waitForSelector('.cine-site');
+            if(await page.locator('canvas').count()!==1)throw new Error(`WebGL canvas missing on ${route}`);
+            const text=(await page.locator('.cine-intro h1').innerText()).replace(/\s+/g,' ').trim();
+            if(!text.includes(title))throw new Error(`Wrong ${route} story: ${text}`);
+          }
+          await page.goto(`${base}/#app/guest`,{waitUntil:'domcontentloaded'});
+          await page.evaluate(()=>localStorage.clear());await page.reload();
+          await page.getByRole('button',{name:'Place Table 12 order'}).click();
+          await page.goto(`${base}/#app/waiter`);await page.getByRole('button',{name:'Accept order'}).click();
+          await page.goto(`${base}/#app/kitchen`);
+          while(await page.getByRole('button',{name:'Start'}).count())await page.getByRole('button',{name:'Start'}).first().click();
+          await page.goto(`${base}/#app/stock`);
+          const stockText=await page.locator('body').innerText();
+          if(!stockText.includes('12,840 g'))throw new Error('Paneer recipe consumption did not reach Stock view');
+          await page.goto(`${base}/#app/kitchen`);
+          while(await page.getByRole('button',{name:'Mark ready'}).count())await page.getByRole('button',{name:'Mark ready'}).first().click();
+          await page.goto(`${base}/#app/waiter`);
+          while(await page.getByRole('button',{name:'Serve now'}).count())await page.getByRole('button',{name:'Serve now'}).first().click();
+          await page.goto(`${base}/#app/pos`);await page.getByRole('button',{name:'Pay with UPI'}).click();
+          await page.goto(`${base}/#app/owner`);
+          const owner=await page.locator('body').innerText();
+          if(!owner.includes('₹1,054'))throw new Error('Payment did not reach Owner sales');
+          if(!owner.includes('1 paid orders'))throw new Error('Owner paid-order metric did not update');
+          if(errors.length)throw new Error(errors.join('\n'));
+          await browser.close();
+          NODE
