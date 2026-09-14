@@ -50,8 +50,8 @@ jobs:
             if(!h.includes(text)) throw new Error(`Missing ${r} headline: ${h}`);
             if(await page.locator('.m5-world iframe').count()<1) throw new Error(`No 3D world mounted for ${r}`);
           }
-          await page.goto('http://127.0.0.1:4173/app.html#app/owner',{waitUntil:'domcontentloaded'});await page.waitForSelector('.op-shell');
-          for(const role of ['manager','cashier','waiter','kitchen','stock']){await page.goto(`http://127.0.0.1:4173/app.html#app/${role}`,{waitUntil:'domcontentloaded'});await page.waitForSelector('.op-shell')}
+          await page.goto('http://127.0.0.1:4173/app.html#app/owner',{waitUntil:'domcontentloaded'});await page.waitForSelector('.operating-os');
+          for(const role of ['manager','cashier','waiter','kitchen','stock']){await page.goto(`http://127.0.0.1:4173/app.html#app/${role}`,{waitUntil:'domcontentloaded'});await page.waitForSelector('.operating-os')}
           if(errors.length) throw new Error(errors.join('\n'));
           await browser.close();
           NODE
