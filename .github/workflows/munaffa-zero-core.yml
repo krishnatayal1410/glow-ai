@@ -17,8 +17,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: pnpm
-          cache-dependency-path: munaffa/pnpm-lock.yaml
       - run: pnpm install --no-frozen-lockfile
       - run: pnpm --filter @munaffa/domain test
       - run: pnpm --filter @munaffa/domain build
