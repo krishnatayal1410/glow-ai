@@ -1,0 +1,111 @@
+name: Munaffa Realworld V4 Check
+on:
+  push:
+    branches: [munaffa-realworld-v4]
+  workflow_dispatch:
+jobs:
+  verify-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: munaffa-platform/apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Enforce v4 visual architecture
+        run: |
+          ! grep -q 'PhotoScene' src/features/ImmersiveMarketing.jsx
+          ! grep -q 'useTexture' src/features/ImmersiveMarketing.jsx
+          ! grep -q 'images.unsplash.com' src/features/ImmersiveMarketing.jsx
+          ! grep -q 'boxGeometry' src/features/ImmersiveMarketing.jsx
+          ! grep -q 'sphereGeometry' src/features/ImmersiveMarketing.jsx
+          grep -q 'useGLTF' src/features/ImmersiveMarketing.jsx
+          grep -q 'CommercialRefrigerator' src/features/ImmersiveMarketing.jsx
+          grep -q 'SheenWoodLeatherSofa' src/features/ImmersiveMarketing.jsx
+          grep -q 'Route-specific worlds' src/features/ImmersiveMarketing.jsx
+      - name: Install web dependencies
+        run: npm install --no-audit --no-fund
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+      - name: Build web
+        run: npm run build
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Start preview
+        run: |
+          npm run preview -- --port 4173 >/tmp/munaffa-v4.log 2>&1 &
+          sleep 3
+      - name: Verify public worlds and product flows
+        run: |
+          cat > verify.mjs <<'EOF'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const context=await browser.newContext({viewport:{width:1440,height:900},reducedMotion:'reduce'});
+          const page=await context.newPage(); page.setDefaultTimeout(9000);
+          const pageErrors=[]; page.on('pageerror',e=>pageErrors.push(e.message));
+          const expect=async(sel)=>{if(!(await page.locator(sel).count()))throw new Error('Missing '+sel)};
+          await page.goto('http://127.0.0.1:4173/#home',{waitUntil:'domcontentloaded',timeout:30000});
+          await page.waitForTimeout(2500);
+          await expect('.rw-site'); await expect('.rw-world canvas'); await expect('.rw-hero h1');
+          if(!(await page.locator('.rw-hero h1').textContent()).includes('Enter the restaurant'))throw new Error('V4 home not loaded');
+          const routes=['platform','profit','operations','inventory','guest','ai','discovery','pricing','about'];
+          const titles=[];
+          for(const route of routes){
+            await page.evaluate(r=>location.hash=r,route); await page.waitForTimeout(700);
+            await expect('.rw-world canvas'); await expect('.rw-hero h1'); await expect('.rw-section');
+            titles.push(await page.locator('.rw-hero h1').textContent());
+          }
+          if(new Set(titles).size!==routes.length)throw new Error('Repeated route hero experiences');
+          await page.evaluate(()=>{localStorage.clear();location.hash='signup'}); await page.waitForTimeout(350);
+          await expect('.auth-card');
+          await page.locator('input[placeholder="Your name"]').fill('V4 Guest');
+          await page.locator('input[placeholder="you@example.com"]').fill('v4@example.com');
+          await page.locator('input[type="password"]').fill('password123');
+          await page.locator('button.primary.wide').click({force:true}); await page.waitForTimeout(300);
+          await expect('.onboard'); await page.locator('.role-card').first().click({force:true});
+          for(let i=0;i<3;i++){await page.locator('.onboard footer .primary').click({force:true});await page.waitForTimeout(160)}
+          await expect('.consumer'); await page.locator('.venue-open').first().click({force:true}); await page.waitForTimeout(150);
+          await page.locator('.dish-row>button').first().click({force:true}); await page.waitForTimeout(250); await expect('.cart-fab');
+          await page.locator('.cart-fab').click({force:true}); await expect('.checkout');
+          await page.locator('.checkout button.primary.wide').click({force:true}); await page.waitForTimeout(1100); await expect('.order-float');
+          for(const role of ['owner','manager','cashier','waiter','kitchen','stock','admin']){await page.evaluate(r=>location.hash='app/'+r,role);await page.waitForTimeout(220);await expect('.ops')}
+          if(pageErrors.some(e=>!e.includes('Could not load')))throw new Error('Page errors: '+pageErrors.join(' | '));
+          await browser.close(); console.log('Munaffa realworld v4 passed');
+          EOF
+          node verify.mjs
+  verify-mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    defaults:
+      run:
+        working-directory: munaffa-platform/apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install --no-audit --no-fund
+      - run: npx expo-doctor@latest
+      - name: Verify native surfaces
+        run: |
+          grep -q 'CameraView' App.jsx
+          grep -q 'expo-location' package.json
+          grep -q 'createClient' App.jsx
+          grep -q 'Owner' App.jsx
+          grep -q 'Kitchen' App.jsx
+  verify-database:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Supabase schema
+        run: |
+          test -f munaffa-platform/supabase/schema.sql
+          test -f munaffa-platform/supabase/migrations/002_consumer_and_identity.sql
+          grep -q 'enable row level security' munaffa-platform/supabase/schema.sql
+          grep -q 'inventory_movements' munaffa-platform/supabase/schema.sql
+          grep -q 'reservations' munaffa-platform/supabase/migrations/002_consumer_and_identity.sql
