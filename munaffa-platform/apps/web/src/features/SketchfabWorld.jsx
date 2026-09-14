@@ -1,4 +1,5 @@
 import React,{useEffect,useRef,useState}from'react';
+import'../sketchfab-world.css';
 
 const ROOMS={
  home:{uid:'f65dab077a2944cebbf7959b5b41cc98',label:'Fully furnished restaurant environment',credit:'Katydid · Sketchfab · CC BY'},
