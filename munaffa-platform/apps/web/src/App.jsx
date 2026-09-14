@@ -1,5 +1,5 @@
 import React,{createContext,useContext,useEffect,useMemo,useState}from'react';
-import ImmersiveMarketing from './features/ImmersiveMarketing';
+import MarketingRouter from './features/MarketingRouter';
 import AuthOnboarding from './features/AuthOnboarding';
 import ConsumerExperience from './features/ConsumerExperience';
 import RestaurantOS from './features/RestaurantOS';
@@ -20,6 +20,6 @@ export default function App(){
  useEffect(()=>{saveLocal({order})},[order]);
  const value=useMemo(()=>({route,session,setSession,profile,setProfile,cart,setCart,activeVenue,setActiveVenue,order,setOrder,online,logout:async()=>{await signOutUser();setSession(null);setProfile(null);setCart([]);setOrder(null);go('home')}}),[route,session,profile,cart,activeVenue,order,online]);
  if(!ready)return <div className="boot"><div className="boot-orbit"/><strong>Munaffa</strong><span>Connecting the restaurant...</span></div>;
- let view;if(route==='auth'||route==='signup'||route==='onboarding')view=<AuthOnboarding/>;else if(route.startsWith('consumer'))view=<ConsumerExperience/>;else if(route.startsWith('app/'))view=<RestaurantOS key={route}/>;else view=<ImmersiveMarketing key={route}/>;
+ let view;if(route==='auth'||route==='signup'||route==='onboarding')view=<AuthOnboarding/>;else if(route.startsWith('consumer'))view=<ConsumerExperience/>;else if(route.startsWith('app/'))view=<RestaurantOS key={route}/>;else view=<MarketingRouter key={route}/>;
  return <Ctx.Provider value={value}><div className={!online?'offline app-root':'app-root'}>{!online&&<div className="offline-bar">Offline mode · actions are queued locally</div>}{view}</div></Ctx.Provider>;
 }
