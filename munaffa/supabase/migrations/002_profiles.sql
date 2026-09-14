@@ -9,6 +9,9 @@ create table if not exists public.profiles(
 );
 
 alter table public.profiles enable row level security;
-create policy if not exists profile_self_read on public.profiles for select using(id=auth.uid());
-create policy if not exists profile_self_insert on public.profiles for insert with check(id=auth.uid());
-create policy if not exists profile_self_update on public.profiles for update using(id=auth.uid()) with check(id=auth.uid());
+drop policy if exists profile_self_read on public.profiles;
+drop policy if exists profile_self_insert on public.profiles;
+drop policy if exists profile_self_update on public.profiles;
+create policy profile_self_read on public.profiles for select using(id=auth.uid());
+create policy profile_self_insert on public.profiles for insert with check(id=auth.uid());
+create policy profile_self_update on public.profiles for update using(id=auth.uid()) with check(id=auth.uid());
