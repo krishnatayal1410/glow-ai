@@ -1,7 +1,8 @@
 import React,{useEffect,useState}from'react';
 import{createRoot}from'react-dom/client';
-import App from'./App';
+import Router from'./Router';
 import'./styles.css';
+import'./cinematic/cinematic.css';
 const read=()=>decodeURIComponent((location.hash||'#story').slice(1));
-function Root(){const[route,setRoute]=useState(read());useEffect(()=>{const f=()=>setRoute(read());addEventListener('hashchange',f);return()=>removeEventListener('hashchange',f)},[]);return <App route={route}/>}
+function Root(){const[route,setRoute]=useState(read());useEffect(()=>{const f=()=>{setRoute(read());scrollTo({top:0,behavior:'instant'})};addEventListener('hashchange',f);return()=>removeEventListener('hashchange',f)},[]);return <Router route={route}/>}
 createRoot(document.getElementById('root')).render(<Root/>);
