@@ -1,0 +1,12 @@
+{
+  "name": "munaffa",
+  "private": true,
+  "version": "0.0.1",
+  "packageManager": "pnpm@10.17.1",
+  "scripts": {
+    "test": "pnpm -r test",
+    "build": "pnpm -r build",
+    "dev:marketing": "pnpm --filter @munaffa/marketing dev",
+    "dev:ops": "pnpm --filter @munaffa/ops dev"
+  }
+}
