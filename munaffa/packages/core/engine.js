@@ -1,5 +1,5 @@
 const now=()=>new Date().toISOString();
-const clone=v=>structuredClone?structuredClone(v):JSON.parse(JSON.stringify(v));
+const clone=v=>typeof globalThis.structuredClone==='function'?globalThis.structuredClone(v):JSON.parse(JSON.stringify(v));
 
 export const menu={
  paneer_tikka:{id:'paneer_tikka',name:'Paneer Tikka',price:349,station:'tandoor',recipe:{paneer:180,capsicum:60,onion:40,spices:15}},
@@ -20,12 +20,12 @@ export const initialState=()=>({
 });
 
 const event=(s,type,payload={})=>s.events.push({id:`evt_${s.events.length+1}`,type,payload,at:now()});
-const itemCost=(item)=>Object.entries(menu[item.menuId].recipe).reduce((sum,[ingredientId,qty])=>sum+qty*item.qty*item.ingredientCosts[ingredientId],0);
+const itemCost=item=>Object.entries(menu[item.menuId].recipe).reduce((sum,[ingredientId,qty])=>sum+qty*item.qty*item.ingredientCosts[ingredientId],0);
 
 export function reduceRestaurant(state,action){
  const s=clone(state);const p=action.payload||{};
  switch(action.type){
-  case 'RESET': return initialState();
+  case 'RESET':return initialState();
   case 'ORDER_PLACED':{
    const id=`ORD-${String(s.sequence++).padStart(4,'0')}`;
    const items=(p.items||[]).map((x,i)=>{const dish=menu[x.menuId];return{id:`${id}-${i+1}`,menuId:x.menuId,name:dish.name,qty:x.qty||1,price:dish.price,station:dish.station,status:'new',consumed:false,ingredientCosts:Object.fromEntries(Object.keys(dish.recipe).map(k=>[k,s.ingredients[k].costPerUnit]))}});
