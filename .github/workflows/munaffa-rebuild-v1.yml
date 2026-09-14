@@ -1,0 +1,30 @@
+name: Munaffa Rebuild V1
+on:
+  push:
+    branches: [munaffa-rebuild-v1]
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: munaffa
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Enforce rejected-visual exclusions
+        run: |
+          ! grep -R "boxGeometry\|sphereGeometry\|cylinderGeometry\|backdrop-filter\|filter: *blur" apps/web/src || (echo 'Rejected visual primitive or blur reintroduced' && exit 1)
+      - name: Install workspace
+        run: npm install --no-audit --no-fund
+      - name: Test connected event engine
+        run: npm run test:engine
+      - name: Build web app
+        run: npm run build
+      - name: Verify Supabase RLS schema
+        run: |
+          grep -qi "row level security" supabase/schema.sql
+          grep -q "restaurant_events" supabase/schema.sql
+          grep -q "stock_movements" supabase/schema.sql
