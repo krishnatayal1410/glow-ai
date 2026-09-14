@@ -1,0 +1,13 @@
+import assert from'node:assert/strict';
+import{initialState,reduceRestaurant,activeOrder,metrics}from'./engine.js';
+let s=initialState();
+const d=(type,payload={})=>{s=reduceRestaurant(s,{type,payload});return s};
+d('ORDER_PLACED',{tableId:'T12',source:'guest',items:[{menuId:'paneer_tikka',qty:2},{menuId:'garlic_naan',qty:4}]});
+let o=activeOrder(s);assert.equal(o.items.length,2);assert.equal(s.tables.T12.status,'ordering');
+d('ORDER_ACCEPTED',{orderId:o.id});o=activeOrder(s);assert.equal(o.status,'accepted');
+const paneerBefore=s.ingredients.paneer.qty;for(const item of o.items)d('ITEM_STARTED',{orderId:o.id,itemId:item.id});assert.ok(s.ingredients.paneer.qty<paneerBefore);assert.ok(s.stockMovements.length>0);
+o=activeOrder(s);for(const item of o.items)d('ITEM_READY',{orderId:o.id,itemId:item.id});assert.equal(s.tables.T12.status,'ready');
+o=activeOrder(s);for(const item of o.items)d('ITEM_SERVED',{orderId:o.id,itemId:item.id});o=activeOrder(s);assert.equal(o.status,'served');
+d('PAYMENT_CAPTURED',{orderId:o.id,method:'upi'});const m=metrics(s);assert.ok(m.revenue>0);assert.ok(m.contribution>0);assert.equal(m.paidOrders,1);assert.equal(activeOrder(s).paymentStatus,'paid');
+d('WASTE_LOGGED',{ingredientId:'paneer',qty:100,reason:'prep'});assert.ok(metrics(s).potentialLeakage>0);
+console.log('Munaffa engine flow passed:',{revenue:m.revenue,contribution:m.contribution,events:s.events.length,stockMovements:s.stockMovements.length});
