@@ -42,12 +42,12 @@ jobs:
           const browser=await chromium.launch({headless:true});
           const page=await browser.newPage({viewport:{width:1440,height:900}});
           const errors=[];page.on('pageerror',e=>errors.push(e.message));
-          const routes={home:'A restaurant is a living system.',restaurants:'Built around the dining room',cafes:'Fast service without losing',hotels:'One profit layer across hotel F&B',profit:'Know where every rupee',operations:'The restaurant should feel alive',inventory:'From delivery door to plated dish',discover:'Find hospitality without breaking',pricing:'Software should earn its seat'};
+          const routes={home:'A restaurant is a living system',restaurants:'Built around the dining room',cafes:'Fast service without losing',hotels:'One profit layer across hotel F&B',profit:'Know where every rupee',operations:'The restaurant should feel alive',inventory:'From delivery door to plated dish',discover:'Find hospitality without breaking',pricing:'Software should earn its seat'};
           for(const [r,text] of Object.entries(routes)){
             await page.goto(`http://127.0.0.1:4173/#${r}`,{waitUntil:'domcontentloaded'});
             await page.waitForSelector('.m5-site');
-            const body=await page.locator('body').innerText();
-            if(!body.includes(text)) throw new Error(`Missing ${r} headline`);
+            const h=(await page.locator('.m5-hero h1').innerText()).replace(/\s+/g,' ').trim();
+            if(!h.includes(text)) throw new Error(`Missing ${r} headline: ${h}`);
             if(await page.locator('.m5-world iframe').count()<1) throw new Error(`No 3D world mounted for ${r}`);
           }
           await page.goto('http://127.0.0.1:4173/app.html#app/owner',{waitUntil:'domcontentloaded'});await page.waitForSelector('.op-shell');
