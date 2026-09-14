@@ -1,0 +1,23 @@
+{
+  "expo":{
+    "name":"Munaffa",
+    "slug":"munaffa",
+    "version":"0.1.0",
+    "orientation":"portrait",
+    "userInterfaceStyle":"light",
+    "scheme":"munaffa",
+    "ios":{
+      "supportsTablet":true,
+      "bundleIdentifier":"com.krishnatayal.munaffa",
+      "infoPlist":{"NSLocationWhenInUseUsageDescription":"Munaffa uses your location to show nearby restaurants, cafés and hotel dining."}
+    },
+    "android":{
+      "package":"com.krishnatayal.munaffa",
+      "permissions":["ACCESS_COARSE_LOCATION","ACCESS_FINE_LOCATION","CAMERA"]
+    },
+    "plugins":[
+      ["expo-camera",{"cameraPermission":"Allow Munaffa to scan restaurant table QR codes."}],
+      ["expo-location",{"locationWhenInUsePermission":"Allow Munaffa to use your location to find nearby hospitality."}]
+    ]
+  }
+}
