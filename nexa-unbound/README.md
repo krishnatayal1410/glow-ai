@@ -2,6 +2,9 @@
 
 Independent cinematic 3D automotive concept experience.
 
+## Live deployment
+https://nexa-unbound-krishnatayal1410s-projects.vercel.app
+
 ## Experience
 - Scroll-controlled 3D camera choreography
 - Procedural concept vehicle built entirely in Three.js
